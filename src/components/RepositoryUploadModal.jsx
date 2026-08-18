@@ -13,15 +13,14 @@ import {
 import { NACETEM_COLLECTIONS, DOCUMENT_TYPES } from '../data/mockLibraryData';
 
 export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, currentUser }) {
-  // Determine clean default author name (avoiding usernames/emails like 'rufysanctuary')
   const defaultAuthorName = currentUser?.name && !currentUser.name.includes('@') && !currentUser.name.toLowerCase().includes('staff') 
     ? currentUser.name 
-    : '';
+    : 'Abubakar Rufai';
 
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
   const [authors, setAuthors] = useState(defaultAuthorName);
-  const [pubYear, setPubYear] = useState('2015'); // Explicit original year
+  const [pubYear, setPubYear] = useState('2015');
   const [publisher, setPublisher] = useState('National Centre for Technology Management (NACETEM)');
   const [volume, setVolume] = useState('');
   const [issue, setIssue] = useState('');
@@ -43,14 +42,12 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
 
   if (!isOpen) return null;
 
-  // Handle Real File Selection (.pdf, .docx, .doc, .txt)
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     setUploadedFile(file);
 
-    // Derive clean title from filename if title empty
     if (!title) {
       const cleanName = file.name
         .replace(/\.[^/.]+$/, '')
@@ -72,7 +69,6 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
     reader.readAsDataURL(file);
   };
 
-  // Auto-generate AI Executive Summary & Bullet Points from abstract
   const handleAutoGenerateAiSummary = () => {
     if (!title && !abstract) {
       alert('Please enter a Title or select a PDF file first so the AI can analyze your publication.');
@@ -121,8 +117,10 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
 
       const newDoc = {
         id: `user-paper-${Date.now()}`,
+        isUserUploaded: true, // Tag explicitly for priority dashboard rendering
+        uploadedBy: currentUser?.name || 'Abubakar Rufai',
         title: title.trim(),
-        subtitle: subtitle.trim() || 'Research Publication',
+        subtitle: subtitle.trim() || 'Priority User Deposited Research',
         authors: authorsArr,
         institution: publisher.trim() || 'National Centre for Technology Management (NACETEM)',
         publisher: publisher.trim() || 'National Centre for Technology Management (NACETEM)',
@@ -180,8 +178,8 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
               <UploadCloud className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="font-extrabold text-lg text-slate-900">Deposit Publication & Accurate Citation Data</h2>
-              <p className="text-xs text-slate-500 font-medium">Specify exact Authors, Year (e.g. 2015), and Journal for perfect APA/IEEE/Harvard citations</p>
+              <h2 className="font-extrabold text-lg text-slate-900">Deposit Priority Research Paper</h2>
+              <p className="text-xs text-slate-500 font-medium">Instantly indexed at top of Dashboard with PDF/Word downloads</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100">
@@ -398,11 +396,11 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
               className="px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center space-x-2 shadow-xs"
             >
               {isSubmitting ? (
-                <span>Indexing Citation & Publishing...</span>
+                <span>Indexing Priority Paper...</span>
               ) : (
                 <>
                   <Check className="w-4 h-4" />
-                  <span>Publish Paper & Generate Citations</span>
+                  <span>Deposit Priority Paper to Dashboard</span>
                 </>
               )}
             </button>

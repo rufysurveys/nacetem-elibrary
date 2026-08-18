@@ -16,7 +16,8 @@ import {
   UploadCloud,
   FileCheck,
   Award,
-  Layers
+  Layers,
+  ShieldAlert
 } from 'lucide-react';
 import { exportToPdf, exportToWord } from '../utils/documentExporter';
 import { generateAcademicCitation } from '../utils/citationFormatter';
@@ -30,24 +31,27 @@ export default function PersonalDashboard({
   onRemoveBorrow,
   onRemoveFavorite,
   onRemoveNote,
+  onDeleteBook,
   onOpenUpload
 }) {
-  const [activeSubTab, setActiveSubTab] = useState('my-papers'); // 'my-papers', 'shelf', 'favorites', 'notes'
+  const [activeSubTab, setActiveSubTab] = useState('my-papers'); // Default priority view
   const [showQrModal, setShowQrModal] = useState(null);
   const [copiedSharePortfolio, setCopiedSharePortfolio] = useState(false);
   const [showPortfolioReportModal, setShowPortfolioReportModal] = useState(false);
 
   const userName = currentUser?.name || 'Abubakar Rufai';
 
-  // Filter books authored / uploaded by the logged-in user
+  // Filter books authored / uploaded by the logged-in user or tagged as priority user uploaded
   const myPapers = allBooks.filter(book => {
-    const authorStr = Array.isArray(book.authors) ? book.authors.join(' ') : book.authors;
+    if (book.isUserUploaded) return true;
+    const authorStr = Array.isArray(book.authors) ? book.authors.join(' ') : (book.authors || '');
     return (
       authorStr.toLowerCase().includes(userName.toLowerCase()) ||
       authorStr.toLowerCase().includes('abubakar rufai') ||
       authorStr.toLowerCase().includes('rufai') ||
       book.id.includes('user-paper') ||
-      book.id.includes('nac-2026-rufai')
+      book.id.includes('nac-2026-rufai') ||
+      (book.title && book.title.toLowerCase().includes('cybercrime act'))
     );
   });
 
@@ -85,7 +89,7 @@ export default function PersonalDashboard({
             <div className="flex items-center space-x-2">
               <h1 className="text-xl md:text-2xl font-black text-slate-900">{userName}</h1>
               <span className="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                {currentUser?.roleLabel || 'NACETEM Researcher'}
+                {currentUser?.roleLabel || (currentRole === 'admin' ? 'Head Librarian (Admin)' : 'NACETEM Researcher')}
               </span>
             </div>
             <p className="text-xs text-slate-500 font-medium">National Centre for Technology Management (NACETEM) • Research & STI Directorate</p>
@@ -128,7 +132,7 @@ export default function PersonalDashboard({
             <FileCheck className="w-5 h-5 text-emerald-600" />
           </div>
           <p className="text-2xl font-black text-slate-900">{myPapers.length}</p>
-          <p className="text-[11px] text-emerald-700 font-bold">100% Readable & Downloadable</p>
+          <p className="text-[11px] text-emerald-700 font-bold">100% Priority Indexed</p>
         </div>
 
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-1">
@@ -137,7 +141,7 @@ export default function PersonalDashboard({
             <Award className="w-5 h-5 text-amber-600" />
           </div>
           <p className="text-2xl font-black text-slate-900">{totalCitations}</p>
-          <p className="text-[11px] text-amber-700 font-bold">Indexed across APA/IEEE/Harvard</p>
+          <p className="text-[11px] text-amber-700 font-bold">APA/IEEE/Harvard Formatted</p>
         </div>
 
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-1">
@@ -170,7 +174,7 @@ export default function PersonalDashboard({
           }`}
         >
           <FileCheck className="w-4 h-4" />
-          <span>My Uploaded Research ({myPapers.length})</span>
+          <span>Priority Deposited Research ({myPapers.length})</span>
         </button>
 
         <button
@@ -210,11 +214,16 @@ export default function PersonalDashboard({
         </button>
       </div>
 
-      {/* Sub-Tab 1: My Deposited Research Papers */}
+      {/* Sub-Tab 1: Priority Deposited Research Papers */}
       {activeSubTab === 'my-papers' && (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="font-extrabold text-lg text-slate-900">My Authored & Deposited Papers</h2>
+            <h2 className="font-extrabold text-lg text-slate-900 flex items-center space-x-2">
+              <span>Priority Deposited Papers</span>
+              <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                Featured Top
+              </span>
+            </h2>
             <button
               onClick={() => setShowPortfolioReportModal(true)}
               className="text-xs text-emerald-800 font-bold hover:underline flex items-center space-x-1"
@@ -238,12 +247,33 @@ export default function PersonalDashboard({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {myPapers.map(paper => (
-                <div key={paper.id} className="bg-white rounded-2xl p-5 border border-slate-200 space-y-3 shadow-xs">
+                <div key={paper.id} className="bg-white rounded-2xl p-5 border border-slate-200 space-y-3 shadow-xs relative">
                   <div className="flex justify-between items-start gap-2">
-                    <span className="text-[11px] font-bold bg-emerald-50 text-emerald-900 border border-emerald-200 px-2 py-0.5 rounded-lg">
+                    <span className="text-[11px] font-bold bg-emerald-50 text-emerald-900 border border-emerald-200 px-2.5 py-0.5 rounded-lg">
                       {paper.category}
                     </span>
-                    <span className="font-mono text-xs font-bold text-slate-500">Year: {paper.year}</span>
+
+                    <div className="flex items-center space-x-2">
+                      <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        Year: {paper.year}
+                      </span>
+
+                      {/* Admin or Author Delete / Remove Button */}
+                      {(currentRole === 'admin' || paper.isUserUploaded) && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Are you sure you want to remove "${paper.title}" from the repository?`)) {
+                              onDeleteBook(paper.id);
+                            }
+                          }}
+                          title="Remove publication as Admin"
+                          className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 transition-all font-bold flex items-center space-x-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span className="text-[10px] font-bold hidden sm:inline">Delete</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <h3 
@@ -256,14 +286,14 @@ export default function PersonalDashboard({
                   <p className="text-xs text-slate-600 line-clamp-2">{paper.abstract}</p>
 
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 font-mono text-[11px] text-slate-800 leading-snug">
-                    <span className="font-bold text-emerald-800 block text-[10px] uppercase mb-1">Formatted APA Citation:</span>
+                    <span className="font-bold text-emerald-800 block text-[10px] uppercase mb-1">Accurate APA Citation:</span>
                     {generateAcademicCitation(paper, 'APA')}
                   </div>
 
                   <div className="pt-2 flex items-center justify-between">
                     <button
                       onClick={() => onRead(paper)}
-                      className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center space-x-1"
+                      className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center space-x-1.5 shadow-xs"
                     >
                       <BookOpen className="w-3.5 h-3.5" />
                       <span>Read & Print</span>
@@ -272,7 +302,7 @@ export default function PersonalDashboard({
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => exportToPdf(paper)}
-                        className="px-2.5 py-1.5 rounded-xl bg-red-50 text-red-700 border border-red-200 font-bold text-xs flex items-center space-x-1"
+                        className="px-2.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-xs flex items-center space-x-1"
                       >
                         <Download className="w-3 h-3" />
                         <span>PDF</span>
@@ -280,7 +310,7 @@ export default function PersonalDashboard({
 
                       <button
                         onClick={() => exportToWord(paper)}
-                        className="px-2.5 py-1.5 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 font-bold text-xs flex items-center space-x-1"
+                        className="px-2.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold text-xs flex items-center space-x-1"
                       >
                         <Download className="w-3 h-3" />
                         <span>Word</span>
@@ -436,15 +466,15 @@ export default function PersonalDashboard({
               <p className="text-slate-500">Date Generated: {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
             </div>
 
-            {/* AI Synthesized Executive Summary of All Papers */}
+            {/* AI Synthesized Executive Summary */}
             <div className="space-y-3 text-xs">
               <h3 className="font-extrabold text-sm text-slate-900 border-b pb-1">1. Consolidated AI Research Impact Summary</h3>
               <p className="text-slate-700 leading-relaxed font-serif">
-                This executive synthesis summarizes the cumulative research contributions of <strong>{userName}</strong> within the National Centre for Technology Management (NACETEM) repository. Across {myPapers.length} major publication(s), the research focuses on institutional capacity evaluation, technology transfer mechanisms, cybersecurity policy, and Science, Technology & Innovation (STI) indicator frameworks in Nigeria.
+                This executive synthesis summarizes the cumulative research contributions of <strong>{userName}</strong> within the National Centre for Technology Management (NACETEM) repository. Across {myPapers.length} priority publication(s), the research focuses on institutional capacity evaluation, technology transfer mechanisms, cybersecurity policy, and Science, Technology & Innovation (STI) indicator frameworks in Nigeria.
               </p>
             </div>
 
-            {/* Annotated Publications List */}
+            {/* Publications List */}
             <div className="space-y-3 text-xs">
               <h3 className="font-extrabold text-sm text-slate-900 border-b pb-1">2. Authored Publications & Formatted Academic Citations</h3>
               <div className="space-y-3">

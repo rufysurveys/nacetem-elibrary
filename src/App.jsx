@@ -18,7 +18,7 @@ import confetti from 'canvas-confetti';
 export default function App() {
   // Books state merged & sanitized to ensure accurate author names and years
   const [books, setBooks] = useState(() => {
-    const saved = localStorage.getItem('nacetem_books_v4');
+    const saved = localStorage.getItem('nacetem_books_v5');
     let baseBooks = INITIAL_BOOKS;
 
     if (saved) {
@@ -37,7 +37,6 @@ export default function App() {
     const sanitizedBooks = baseBooks.map(book => {
       let updatedBook = { ...book };
 
-      // Repair author names if username string
       if (Array.isArray(updatedBook.authors)) {
         updatedBook.authors = updatedBook.authors.map(a => 
           a.toLowerCase().includes('rufysanctuary') ? 'Abubakar Rufai' : a
@@ -46,27 +45,26 @@ export default function App() {
         updatedBook.authors = ['Abubakar Rufai'];
       }
 
-      // Repair institution if username string
       if (updatedBook.institution && updatedBook.institution.toLowerCase().includes('rufysanctuary')) {
         updatedBook.institution = 'National Centre for Technology Management (NACETEM)';
       }
 
-      // Repair Cybercrime Act paper year & DOI
       if (updatedBook.title && updatedBook.title.toLowerCase().includes('cybercrime act')) {
         updatedBook.authors = ['Abubakar Rufai', 'Dr. Kazeem Abubakar'];
         updatedBook.year = 2015;
         updatedBook.institution = 'National Centre for Technology Management (NACETEM)';
         updatedBook.doi = '10.5281/nacetem.2015.001';
+        updatedBook.isUserUploaded = true;
       }
 
       return updatedBook;
     });
 
-    localStorage.setItem('nacetem_books_v4', JSON.stringify(sanitizedBooks));
+    localStorage.setItem('nacetem_books_v5', JSON.stringify(sanitizedBooks));
     return sanitizedBooks;
   });
 
-  // User state (shelf, notes, loans) with LocalStorage
+  // User state
   const [userState, setUserState] = useState(() => {
     const saved = localStorage.getItem('nacetem_user_state');
     return saved ? JSON.parse(saved) : INITIAL_USER_STATE;
@@ -77,20 +75,19 @@ export default function App() {
     const saved = localStorage.getItem('nacetem_current_user');
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Clean username if 'rufysanctuary'
       if (parsed.name && parsed.name.toLowerCase().includes('rufysanctuary')) {
         parsed.name = 'Abubakar Rufai';
       }
       return parsed;
     }
-    return { isAuthenticated: true, name: 'Abubakar Rufai', role: 'staff' };
+    return { isAuthenticated: true, name: 'Abubakar Rufai', role: 'admin', roleLabel: 'Head Librarian (Admin)' };
   });
 
-  // Role persona (staff, admin, other)
-  const [currentRole, setCurrentRole] = useState(currentUser.role || 'staff');
+  // Role persona
+  const [currentRole, setCurrentRole] = useState(currentUser.role || 'admin');
 
-  // Active Main Navigation View
-  const [activeTab, setActiveTab] = useState('catalog'); // 'catalog', 'dashboard', 'admin'
+  // Active Navigation View
+  const [activeTab, setActiveTab] = useState('catalog');
 
   // Modals & Drawers
   const [readingBook, setReadingBook] = useState(null);
@@ -108,17 +105,14 @@ export default function App() {
   const [selectedType, setSelectedType] = useState('All Types');
   const [openAccessOnly, setOpenAccessOnly] = useState(false);
 
-  // Save books to localStorage
   useEffect(() => {
-    localStorage.setItem('nacetem_books_v4', JSON.stringify(books));
+    localStorage.setItem('nacetem_books_v5', JSON.stringify(books));
   }, [books]);
 
-  // Save userState to localStorage
   useEffect(() => {
     localStorage.setItem('nacetem_user_state', JSON.stringify(userState));
   }, [userState]);
 
-  // Save currentUser to localStorage
   useEffect(() => {
     localStorage.setItem('nacetem_current_user', JSON.stringify(currentUser));
   }, [currentUser]);
@@ -128,7 +122,6 @@ export default function App() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Auth Handlers
   const handleAuthenticate = (profile) => {
     let cleanName = profile.name;
     if (cleanName.toLowerCase().includes('rufysanctuary')) {
@@ -148,7 +141,6 @@ export default function App() {
     showToast('Signed out of NACETEM E-Library.');
   };
 
-  // Filter computation
   const filteredBooks = books.filter((book) => {
     const matchesQuery = 
       book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -173,7 +165,6 @@ export default function App() {
     return matchesQuery && matchesCategory && matchesType && matchesAccess;
   });
 
-  // Action Handlers
   const handleBorrow = (bookId) => {
     const isAlreadyBorrowed = userState.borrowedBooks.some(b => b.bookId === bookId);
     if (isAlreadyBorrowed) {
@@ -243,8 +234,9 @@ export default function App() {
 
   const handleUploadBook = (newBook) => {
     setBooks(prev => [newBook, ...prev]);
-    showToast('🚀 Publication successfully archived & AI-summarized in NACETEM Repository!');
+    showToast('🚀 Priority Paper archived & added to top of your Dashboard!');
     confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+    setActiveTab('dashboard'); // Switch immediately to dashboard so user sees paper at top
   };
 
   const handleDeleteBook = (bookId) => {
@@ -302,7 +294,6 @@ export default function App() {
       <main className="flex-1">
         {activeTab === 'catalog' && (
           <div className="space-y-8 pb-16">
-            {/* Hero Search Section */}
             <HeroSearch
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
@@ -316,7 +307,6 @@ export default function App() {
               onTriggerAiPrompt={handleTriggerAiPrompt}
             />
 
-            {/* Catalog Grid */}
             <div className="container mx-auto px-4 max-w-7xl">
               {filteredBooks.length === 0 ? (
                 <div className="text-center py-16 bg-white rounded-3xl space-y-4 max-w-2xl mx-auto border border-slate-200 shadow-sm">
@@ -365,6 +355,7 @@ export default function App() {
             onRemoveBorrow={handleBorrow}
             onRemoveFavorite={handleToggleFavorite}
             onRemoveNote={handleRemoveNote}
+            onDeleteBook={handleDeleteBook}
             onOpenUpload={() => setIsUploadOpen(true)}
           />
         )}
@@ -408,14 +399,14 @@ export default function App() {
         currentUser={currentUser}
       />
 
-      {/* Auth Modal (Sign In / Sign Up) */}
+      {/* Auth Modal */}
       <AuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
         onAuthenticate={handleAuthenticate}
       />
 
-      {/* Universal Citation Generator Modal */}
+      {/* Citation Modal */}
       <CitationModal
         isOpen={isCitationOpen}
         onClose={() => setIsCitationOpen(false)}
