@@ -5,19 +5,17 @@ import {
   QrCode, 
   FileText, 
   Trash2, 
-  ExternalLink, 
   Download, 
   Check, 
-  User, 
   Sparkles,
   Printer,
   Share2,
-  Copy,
   UploadCloud,
   FileCheck,
   Award,
   Layers,
-  Plus
+  Plus,
+  AlertCircle
 } from 'lucide-react';
 import { exportToPdf, exportToWord } from '../utils/documentExporter';
 import { generateAcademicCitation } from '../utils/citationFormatter';
@@ -34,14 +32,14 @@ export default function PersonalDashboard({
   onDeleteBook,
   onOpenUpload
 }) {
-  const [activeSubTab, setActiveSubTab] = useState('my-papers'); // 'my-papers', 'all-library', 'shelf', 'favorites', 'notes'
+  const [activeSubTab, setActiveSubTab] = useState('my-papers');
   const [showQrModal, setShowQrModal] = useState(null);
   const [copiedSharePortfolio, setCopiedSharePortfolio] = useState(false);
   const [showPortfolioReportModal, setShowPortfolioReportModal] = useState(false);
 
   const userName = currentUser?.name || 'Abubakar Rufai';
 
-  // Filter books authored or uploaded by user, or any user-deposited paper
+  // Filter ALL user-uploaded and custom papers unconditionally
   const myPapers = allBooks.filter(book => {
     if (book.isUserUploaded) return true;
     if (book.id && (book.id.startsWith('user-paper') || book.id.includes('user') || book.id.includes('rufai'))) return true;
@@ -108,7 +106,7 @@ export default function PersonalDashboard({
 
           <button
             onClick={onOpenUpload}
-            className="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center space-x-1.5 transition-all shadow-xs"
+            className="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center space-x-1.5 transition-all shadow-md hover:scale-105"
           >
             <Plus className="w-4 h-4" />
             <span>Upload New Paper</span>
@@ -128,11 +126,11 @@ export default function PersonalDashboard({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-1">
           <div className="flex justify-between items-center text-slate-400">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Deposited Papers</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">My Uploaded Papers</span>
             <FileCheck className="w-5 h-5 text-emerald-600" />
           </div>
           <p className="text-2xl font-black text-slate-900">{myPapers.length}</p>
-          <p className="text-[11px] text-emerald-700 font-bold">100% Priority Indexed</p>
+          <p className="text-[11px] text-emerald-700 font-bold">Priority Rendered at Top</p>
         </div>
 
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-1">
@@ -155,28 +153,125 @@ export default function PersonalDashboard({
 
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-1">
           <div className="flex justify-between items-center text-slate-400">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Active Loans</span>
-            <Clock className="w-5 h-5 text-purple-600" />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Repository Papers</span>
+            <Layers className="w-5 h-5 text-purple-600" />
           </div>
-          <p className="text-2xl font-black text-slate-900">{borrowedList.length}</p>
-          <p className="text-[11px] text-purple-700 font-bold">14-Day E-Copies</p>
+          <p className="text-2xl font-black text-slate-900">{allBooks.length}</p>
+          <p className="text-[11px] text-purple-700 font-bold">Indexed in System</p>
         </div>
+      </div>
+
+      {/* PROMINENT ALWAYS-VISIBLE PRIORITY UPLOADED PAPERS CONTAINER */}
+      <div className="bg-gradient-to-br from-emerald-50 via-teal-50/50 to-white rounded-3xl p-6 md:p-8 border-2 border-emerald-300 shadow-sm space-y-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-emerald-200 pb-4">
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="w-3 h-3 rounded-full bg-emerald-600 animate-ping"></span>
+              <h2 className="text-xl font-black text-emerald-950">My Uploaded & Priority Deposited Papers ({myPapers.length})</h2>
+            </div>
+            <p className="text-xs text-emerald-800 font-medium">All publications deposited by you are rendered here first with full download & citation tools</p>
+          </div>
+
+          <button
+            onClick={onOpenUpload}
+            className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs flex items-center space-x-2 shadow-md transition-all hover:scale-105"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Upload Another Paper</span>
+          </button>
+        </div>
+
+        {myPapers.length === 0 ? (
+          <div className="text-center py-10 bg-white rounded-2xl border border-dashed border-emerald-300 space-y-3">
+            <UploadCloud className="w-12 h-12 text-emerald-600 mx-auto animate-bounce" />
+            <h3 className="font-extrabold text-base text-slate-900">No deposited research papers found yet.</h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto">Click the button below to upload your PDF or Word document into the NACETEM Repository.</p>
+            <button
+              onClick={onOpenUpload}
+              className="px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-md"
+            >
+              Upload Your Research Paper Now
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {myPapers.map((paper) => (
+              <div key={paper.id} className="bg-white rounded-2xl p-5 border border-slate-200 space-y-3.5 shadow-sm hover:shadow-md transition-all">
+                <div className="flex justify-between items-start gap-2">
+                  <span className="text-[11px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-0.5 rounded-lg">
+                    {paper.category}
+                  </span>
+
+                  <div className="flex items-center space-x-2">
+                    <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      Year: {paper.year}
+                    </span>
+
+                    {/* Admin or Author Delete Button */}
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Are you sure you want to delete "${paper.title}" from your repository?`)) {
+                          onDeleteBook(paper.id);
+                        }
+                      }}
+                      title="Remove paper"
+                      className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 transition-all font-bold flex items-center space-x-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-bold hidden sm:inline">Delete</span>
+                    </button>
+                  </div>
+                </div>
+
+                <h3 
+                  onClick={() => onRead(paper)}
+                  className="font-bold text-sm md:text-base text-slate-900 hover:text-emerald-700 cursor-pointer line-clamp-2 leading-snug"
+                >
+                  {paper.title}
+                </h3>
+
+                <p className="text-xs text-slate-600 line-clamp-2">{paper.abstract}</p>
+
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 font-mono text-[11px] text-slate-800 leading-snug">
+                  <span className="font-bold text-emerald-800 block text-[10px] uppercase mb-1">Accurate APA Reference:</span>
+                  {generateAcademicCitation(paper, 'APA')}
+                </div>
+
+                <div className="pt-2 flex items-center justify-between">
+                  <button
+                    onClick={() => onRead(paper)}
+                    className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center space-x-1.5 shadow-xs"
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>Read & Print</span>
+                  </button>
+
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => exportToPdf(paper)}
+                      className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-xs flex items-center space-x-1"
+                    >
+                      <Download className="w-3 h-3" />
+                      <span>PDF</span>
+                    </button>
+
+                    <button
+                      onClick={() => exportToWord(paper)}
+                      className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold text-xs flex items-center space-x-1"
+                    >
+                      <Download className="w-3 h-3" />
+                      <span>Word</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Navigation Sub-Tabs */}
       <div className="flex items-center space-x-2 border-b border-slate-200 pb-3 text-xs font-extrabold overflow-x-auto">
-        <button
-          onClick={() => setActiveSubTab('my-papers')}
-          className={`px-4 py-2.5 rounded-xl transition-all flex items-center space-x-2 ${
-            activeSubTab === 'my-papers'
-              ? 'bg-emerald-700 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <FileCheck className="w-4 h-4" />
-          <span>My Uploaded Research ({myPapers.length})</span>
-        </button>
-
         <button
           onClick={() => setActiveSubTab('all-library')}
           className={`px-4 py-2.5 rounded-xl transition-all flex items-center space-x-2 ${
@@ -226,114 +321,6 @@ export default function PersonalDashboard({
         </button>
       </div>
 
-      {/* Sub-Tab 1: Priority Deposited Research Papers */}
-      {activeSubTab === 'my-papers' && (
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="font-extrabold text-lg text-slate-900 flex items-center space-x-2">
-              <span>My Uploaded & Priority Papers ({myPapers.length})</span>
-            </h2>
-            <button
-              onClick={onOpenUpload}
-              className="px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center space-x-1 shadow-xs"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Upload Research Paper</span>
-            </button>
-          </div>
-
-          {myPapers.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-3xl border border-slate-200 space-y-3">
-              <UploadCloud className="w-10 h-10 text-emerald-600 mx-auto animate-bounce" />
-              <p className="font-bold text-sm text-slate-900">No uploaded papers found under your account profile.</p>
-              <p className="text-xs text-slate-500">Click below to upload your PDF or Word document into the repository.</p>
-              <button
-                onClick={onOpenUpload}
-                className="px-5 py-2.5 rounded-xl bg-emerald-700 text-white font-bold text-xs shadow-md"
-              >
-                Upload Your Research Paper Now
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {myPapers.map(paper => (
-                <div key={paper.id} className="bg-white rounded-2xl p-5 border border-slate-200 space-y-3 shadow-xs relative">
-                  <div className="flex justify-between items-start gap-2">
-                    <span className="text-[11px] font-bold bg-emerald-50 text-emerald-900 border border-emerald-200 px-2.5 py-0.5 rounded-lg">
-                      {paper.category}
-                    </span>
-
-                    <div className="flex items-center space-x-2">
-                      <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                        Year: {paper.year}
-                      </span>
-
-                      {/* Admin or Author Delete / Remove Button */}
-                      {(currentRole === 'admin' || paper.isUserUploaded || paper.id.startsWith('user-paper')) && (
-                        <button
-                          onClick={() => {
-                            if (window.confirm(`Are you sure you want to remove "${paper.title}" from the repository?`)) {
-                              onDeleteBook(paper.id);
-                            }
-                          }}
-                          title="Remove publication as Admin"
-                          className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 transition-all font-bold flex items-center space-x-1"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span className="text-[10px] font-bold hidden sm:inline">Delete</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <h3 
-                    onClick={() => onRead(paper)}
-                    className="font-bold text-sm text-slate-900 hover:text-emerald-700 cursor-pointer line-clamp-2"
-                  >
-                    {paper.title}
-                  </h3>
-
-                  <p className="text-xs text-slate-600 line-clamp-2">{paper.abstract}</p>
-
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 font-mono text-[11px] text-slate-800 leading-snug">
-                    <span className="font-bold text-emerald-800 block text-[10px] uppercase mb-1">Accurate APA Citation:</span>
-                    {generateAcademicCitation(paper, 'APA')}
-                  </div>
-
-                  <div className="pt-2 flex items-center justify-between">
-                    <button
-                      onClick={() => onRead(paper)}
-                      className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center space-x-1.5 shadow-xs"
-                    >
-                      <BookOpen className="w-3.5 h-3.5" />
-                      <span>Read & Print</span>
-                    </button>
-
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => exportToPdf(paper)}
-                        className="px-2.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-xs flex items-center space-x-1"
-                      >
-                        <Download className="w-3 h-3" />
-                        <span>PDF</span>
-                      </button>
-
-                      <button
-                        onClick={() => exportToWord(paper)}
-                        className="px-2.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold text-xs flex items-center space-x-1"
-                      >
-                        <Download className="w-3 h-3" />
-                        <span>Word</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Sub-Tab: All Repository Papers */}
       {activeSubTab === 'all-library' && (
         <div className="space-y-4">
@@ -362,17 +349,15 @@ export default function PersonalDashboard({
                     Read & Print
                   </button>
 
-                  {currentRole === 'admin' && (
-                    <button
-                      onClick={() => {
-                        if (window.confirm(`Delete "${paper.title}"?`)) onDeleteBook(paper.id);
-                      }}
-                      className="px-2.5 py-1.5 rounded-xl bg-red-50 text-red-700 border border-red-200 font-bold text-xs flex items-center space-x-1"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Delete</span>
-                    </button>
-                  )}
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Delete "${paper.title}"?`)) onDeleteBook(paper.id);
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-red-50 text-red-700 border border-red-200 font-bold text-xs flex items-center space-x-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </button>
                 </div>
               </div>
             ))}

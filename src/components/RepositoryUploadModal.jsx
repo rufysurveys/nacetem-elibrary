@@ -48,33 +48,28 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
 
     setUploadedFile(file);
 
-    if (!title) {
-      const cleanName = file.name
-        .replace(/\.[^/.]+$/, '')
-        .replace(/[-_]/g, ' ')
-        .replace(/\b\w/g, l => l.toUpperCase());
-      setTitle(cleanName);
-    }
+    // Derive clean title from filename if title empty
+    const cleanName = file.name
+      .replace(/\.[^/.]+$/, '')
+      .replace(/[-_]/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase());
+
+    if (!title) setTitle(cleanName);
+    if (!authors) setAuthors(defaultAuthorName);
+    
+    // Auto-populate abstract so submission NEVER fails due to empty abstract
+    const autoAbstract = `Official research publication "${file.name}" deposited into the NACETEM Repository by ${authors || defaultAuthorName}. Full document verified and indexed for 100% online reading, academic citations, and direct PDF/Word download.`;
+    if (!abstract) setAbstract(autoAbstract);
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const dataUrl = event.target.result;
-      setUploadedPdfDataUrl(dataUrl);
-
-      if (!abstract) {
-        setAbstract(`Official research publication "${file.name}" uploaded by ${authors || 'the author'}. Complete paper content indexed and verified for 100% online reading, citation formatting, and PDF download.`);
-      }
+      setUploadedPdfDataUrl(event.target.result);
     };
-
     reader.readAsDataURL(file);
   };
 
   const handleAutoGenerateAiSummary = () => {
-    if (!title && !abstract) {
-      alert('Please enter a Title or select a PDF file first so the AI can analyze your publication.');
-      return;
-    }
-
+    const activeTitle = title || (uploadedFile ? uploadedFile.name : 'Research Paper');
     setIsGeneratingAi(true);
 
     setTimeout(() => {
@@ -89,21 +84,28 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
         `Allocate dedicated funding for continuous capacity building and technical infrastructure development.`
       ].join('\n');
 
+      if (!abstract) {
+        setAbstract(`Study on ${activeTitle} addressing key policy challenges in ${category}. The research provides actionable frameworks for technology transfer and capacity building in Nigeria.`);
+      }
+
       setKeyTakeaways(generatedTakeaways);
       setPolicyRecommendations(generatedPolicy);
       setIsGeneratingAi(false);
-    }, 800);
+    }, 600);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!title || !authors || !abstract) return;
+
+    // Ensure fallback values so form NEVER blocks submission silently!
+    const finalTitle = title.trim() || (uploadedFile ? uploadedFile.name : 'Appraising Institutional Capacity For Implementation Of The Nigerian Cybercrime Act 2015');
+    const finalAuthors = authors.trim() ? authors.split(/;|,/).map(a => a.trim()).filter(Boolean) : [defaultAuthorName];
+    const finalAbstract = abstract.trim() || `Official research publication "${finalTitle}" deposited by ${finalAuthors.join(', ')}. Full text indexed for online reading and download.`;
 
     setIsSubmitting(true);
 
     setTimeout(() => {
       const generatedDoi = customDoi || `10.5281/nacetem.${pubYear || '2015'}.${Math.floor(1000 + Math.random() * 9000)}`;
-      const authorsArr = authors.split(/;|,/).map(a => a.trim()).filter(Boolean);
       
       const takeawaysArr = keyTakeaways ? keyTakeaways.split('\n').filter(Boolean) : [
         `Evaluates institutional capacity and policy execution for ${category}.`,
@@ -118,10 +120,10 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
       const newDoc = {
         id: `user-paper-${Date.now()}`,
         isUserUploaded: true, // Tag explicitly for priority dashboard rendering
-        uploadedBy: currentUser?.name || 'Abubakar Rufai',
-        title: title.trim(),
-        subtitle: subtitle.trim() || 'Priority User Deposited Research',
-        authors: authorsArr,
+        uploadedBy: currentUser?.name || defaultAuthorName,
+        title: finalTitle,
+        subtitle: subtitle.trim() || 'Priority User Deposited Research Paper',
+        authors: finalAuthors,
         institution: publisher.trim() || 'National Centre for Technology Management (NACETEM)',
         publisher: publisher.trim() || 'National Centre for Technology Management (NACETEM)',
         category,
@@ -143,20 +145,20 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
         audioAvailable: true,
         pdfDataUrl: uploadedPdfDataUrl,
         uploadedFileName: uploadedFile ? uploadedFile.name : null,
-        abstract,
+        abstract: finalAbstract,
         keyTakeaways: takeawaysArr,
         policyRecommendations: policyArr,
         fullText: [
           {
-            sectionTitle: 'Executive Abstract & AI Summary',
-            content: `${abstract}\n\nKey Takeaways:\n${takeawaysArr.map(t => '• ' + t).join('\n')}`
+            sectionTitle: 'Executive Abstract & Paper Summary',
+            content: `${finalAbstract}\n\nKey Takeaways:\n${takeawaysArr.map(t => '• ' + t).join('\n')}`
           },
           {
-            sectionTitle: '1. Introduction & Methodology',
-            content: `This research paper by ${authorsArr.join(', ')} examines institutional capacity, legal enforcement, and technological frameworks for ${title}.\n\nPublished: ${pubYear || 2015} | Institution: ${publisher || 'NACETEM'}.`
+            sectionTitle: '1. Introduction & Research Methodology',
+            content: `This research paper by ${finalAuthors.join(', ')} examines institutional capacity, legal enforcement, and technological frameworks for ${finalTitle}.\n\nPublished: ${pubYear || 2015} | Institution: ${publisher || 'NACETEM'}.`
           },
           {
-            sectionTitle: '2. Policy Directives & Conclusion',
+            sectionTitle: '2. Policy Directives & Strategic Conclusion',
             content: `Key Directives:\n${policyArr.map((p, i) => `${i+1}. ${p}`).join('\n\n')}`
           }
         ]
@@ -165,7 +167,7 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
       onUploadBook(newDoc);
       setIsSubmitting(false);
       onClose();
-    }, 1000);
+    }, 600);
   };
 
   return (
@@ -178,8 +180,8 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
               <UploadCloud className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="font-extrabold text-lg text-slate-900">Deposit Priority Research Paper</h2>
-              <p className="text-xs text-slate-500 font-medium">Instantly indexed at top of Dashboard with PDF/Word downloads</p>
+              <h2 className="font-extrabold text-lg text-slate-900">Upload & Archive Paper to Dashboard</h2>
+              <p className="text-xs text-slate-500 font-medium">Instantly indexed at top of your Dashboard with PDF/Word downloads</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100">
@@ -208,9 +210,9 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
           {uploadedFile ? (
             <div className="space-y-1">
               <FileCheck className="w-7 h-7 mx-auto text-emerald-700" />
-              <p className="font-bold text-xs text-emerald-900">Attached File: {uploadedFile.name}</p>
+              <p className="font-bold text-xs text-emerald-900">Attached PDF/Word File: {uploadedFile.name}</p>
               <p className="text-[11px] text-emerald-700">
-                Size: {(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB • PDF/Word Document Ready
+                Size: {(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB • Ready for Dashboard Indexing & Downloads
               </p>
             </div>
           ) : (
@@ -231,7 +233,6 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
             </label>
             <input
               type="text"
-              required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Appraising Institutional Capacity For Implementation Of The Nigerian Cybercrime Act 2015"
@@ -243,14 +244,13 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
             <div className="space-y-1">
               <label className="text-slate-800 font-bold flex items-center space-x-1">
                 <User className="w-3.5 h-3.5 text-emerald-700" />
-                <span>Full Author Name(s) * (e.g. Abubakar Rufai, Dr. Olushola Odusanya)</span>
+                <span>Full Author Name(s) * (e.g. Abubakar Rufai)</span>
               </label>
               <input
                 type="text"
-                required
                 value={authors}
                 onChange={(e) => setAuthors(e.target.value)}
-                placeholder="First Name Last Name (e.g. Abubakar Rufai)"
+                placeholder="Abubakar Rufai"
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 font-semibold"
               />
             </div>
@@ -262,7 +262,6 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
               </label>
               <input
                 type="text"
-                required
                 value={pubYear}
                 onChange={(e) => setPubYear(e.target.value)}
                 placeholder="2015"
@@ -298,39 +297,6 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <label className="text-slate-700 font-bold">Volume</label>
-              <input
-                type="text"
-                value={volume}
-                onChange={(e) => setVolume(e.target.value)}
-                placeholder="Vol. 4"
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-emerald-600 font-mono text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-slate-700 font-bold">Issue / No.</label>
-              <input
-                type="text"
-                value={issue}
-                onChange={(e) => setIssue(e.target.value)}
-                placeholder="No. 2"
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-emerald-600 font-mono text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-slate-700 font-bold">Page Numbers</label>
-              <input
-                type="text"
-                value={pages}
-                onChange={(e) => setPages(e.target.value)}
-                placeholder="45-58"
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-emerald-600 font-mono text-xs"
-              />
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-slate-800 font-bold">STI Category</label>
@@ -361,7 +327,7 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
 
           <div className="space-y-1">
             <div className="flex justify-between items-center">
-              <label className="text-slate-800 font-bold">Paper Abstract / Executive Summary *</label>
+              <label className="text-slate-800 font-bold">Paper Abstract / Summary</label>
               <button
                 type="button"
                 onClick={handleAutoGenerateAiSummary}
@@ -373,11 +339,10 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
               </button>
             </div>
             <textarea
-              required
               rows={3}
               value={abstract}
               onChange={(e) => setAbstract(e.target.value)}
-              placeholder="Paste publication abstract or summary..."
+              placeholder="Paste abstract or click Auto-Generate AI Summary above..."
               className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 font-medium"
             ></textarea>
           </div>
@@ -393,14 +358,14 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center space-x-2 shadow-xs"
+              className="px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center space-x-2 shadow-md transition-all hover:scale-105"
             >
               {isSubmitting ? (
-                <span>Indexing Priority Paper...</span>
+                <span>Indexing to Dashboard...</span>
               ) : (
                 <>
                   <Check className="w-4 h-4" />
-                  <span>Deposit Priority Paper to Dashboard</span>
+                  <span>Publish Paper to Dashboard Now</span>
                 </>
               )}
             </button>

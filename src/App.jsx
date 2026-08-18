@@ -18,15 +18,18 @@ import confetti from 'canvas-confetti';
 export default function App() {
   // Books state merged & sanitized to ensure accurate author names and years
   const [books, setBooks] = useState(() => {
-    const saved = localStorage.getItem('nacetem_books_v5');
+    const saved = localStorage.getItem('nacetem_books_v6');
     let baseBooks = INITIAL_BOOKS;
 
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         const mergedMap = new Map();
-        INITIAL_BOOKS.forEach(b => mergedMap.set(b.id, b));
+        // User uploads take top priority
         parsed.forEach(b => mergedMap.set(b.id, b));
+        INITIAL_BOOKS.forEach(b => {
+          if (!mergedMap.has(b.id)) mergedMap.set(b.id, b);
+        });
         baseBooks = Array.from(mergedMap.values());
       } catch (e) {
         baseBooks = INITIAL_BOOKS;
@@ -60,7 +63,7 @@ export default function App() {
       return updatedBook;
     });
 
-    localStorage.setItem('nacetem_books_v5', JSON.stringify(sanitizedBooks));
+    localStorage.setItem('nacetem_books_v6', JSON.stringify(sanitizedBooks));
     return sanitizedBooks;
   });
 
@@ -106,7 +109,7 @@ export default function App() {
   const [openAccessOnly, setOpenAccessOnly] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem('nacetem_books_v5', JSON.stringify(books));
+    localStorage.setItem('nacetem_books_v6', JSON.stringify(books));
   }, [books]);
 
   useEffect(() => {
@@ -233,14 +236,21 @@ export default function App() {
   };
 
   const handleUploadBook = (newBook) => {
-    setBooks(prev => [newBook, ...prev]);
+    // Explicitly tag and prepend new uploaded book to books array
+    const taggedBook = { ...newBook, isUserUploaded: true, uploadedBy: currentUser?.name || 'Abubakar Rufai' };
+    const updatedBooks = [taggedBook, ...books];
+    setBooks(updatedBooks);
+    localStorage.setItem('nacetem_books_v6', JSON.stringify(updatedBooks));
+    
     showToast('🚀 Priority Paper archived & added to top of your Dashboard!');
     confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
-    setActiveTab('dashboard'); // Switch immediately to dashboard so user sees paper at top
+    setActiveTab('dashboard'); // Switch immediately to dashboard view
   };
 
   const handleDeleteBook = (bookId) => {
-    setBooks(prev => prev.filter(b => b.id !== bookId));
+    const updatedBooks = books.filter(b => b.id !== bookId);
+    setBooks(updatedBooks);
+    localStorage.setItem('nacetem_books_v6', JSON.stringify(updatedBooks));
     showToast('Publication deleted from repository.');
   };
 
