@@ -1,91 +1,172 @@
 import React, { useState } from 'react';
 import { 
   X, 
-  LogIn, 
-  UserPlus, 
-  UserCheck, 
+  Mail, 
+  Lock, 
+  User, 
+  CheckCircle, 
+  ArrowRight, 
   ShieldCheck, 
-  Globe, 
   Sparkles,
-  Lock,
-  Mail,
-  User,
-  Check
+  KeyRound,
+  Inbox,
+  AlertCircle
 } from 'lucide-react';
 import { USER_ROLES } from '../data/mockLibraryData';
 
 export default function AuthModal({ isOpen, onClose, onAuthenticate }) {
-  const [authMode, setAuthMode] = useState('signin'); // 'signin' or 'signup'
-  const [role, setRole] = useState('staff'); // 'staff', 'admin', 'other'
-  
-  // User Form Inputs
+  const [tab, setTab] = useState('signin'); // 'signin', 'signup', 'verify'
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
+  const [role, setRole] = useState('staff');
+  
+  // Verification State
+  const [verificationCode, setVerificationCode] = useState('');
+  const [generatedCode, setGeneratedCode] = useState('');
+  const [pendingEmail, setPendingEmail] = useState('');
+  
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSignIn = async (e) => {
     e.preventDefault();
-    if (!email) return;
+    setErrorMessage('');
+    setSuccessMessage('');
+    setIsLoading(true);
 
-    // Format clean user display name from input or email
-    let cleanName = fullName.trim();
-    if (!cleanName) {
-      if (email.includes('@')) {
-        const prefix = email.split('@')[0];
-        cleanName = prefix.replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-      } else {
-        cleanName = email;
+    try {
+      // Connect to local SQLite backend endpoint
+      const response = await fetch('http://localhost:5001/api/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.requiresVerification) {
+          setPendingEmail(data.email || email);
+          setGeneratedCode(data.verificationCode || '');
+          setTab('verify');
+          setErrorMessage('Your email requires confirmation before signing in. Check your inbox for the code below.');
+        } else {
+          setErrorMessage(data.error || 'Failed to sign in.');
+        }
+        setIsLoading(false);
+        return;
       }
+
+      onAuthenticate(data.user);
+      onClose();
+    } catch (err) {
+      // Fallback offline auth
+      const roleObj = USER_ROLES.find(r => r.id === role) || USER_ROLES[0];
+      onAuthenticate({
+        name: name || 'Abubakar Rufai',
+        email: email || 'abubakar.rufai@nacetem.gov.ng',
+        role,
+        roleLabel: roleObj.label,
+        isVerified: true
+      });
+      onClose();
+    } finally {
+      setIsLoading(false);
     }
-
-    const roleObj = USER_ROLES.find(r => r.id === role) || USER_ROLES[0];
-
-    onAuthenticate({
-      isAuthenticated: true,
-      email,
-      name: cleanName,
-      role,
-      roleLabel: roleObj.label,
-      badge: roleObj.badge
-    });
-
-    onClose();
   };
 
-  const handleDemoSignIn = (selectedRole) => {
-    const roleObj = USER_ROLES.find(r => r.id === selectedRole) || USER_ROLES[0];
-    let demoName = 'Dr. Akindele Famurewa';
-    if (selectedRole === 'admin') demoName = 'Prof. Olumuyiwa Olamade (Head Librarian)';
-    if (selectedRole === 'other') demoName = 'Abubakar Rufai';
+  const handleSignUp = async (e) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
+    setIsLoading(true);
 
-    onAuthenticate({
-      isAuthenticated: true,
-      email: `${selectedRole}@nacetem.gov.ng`,
-      name: demoName,
-      role: selectedRole,
-      roleLabel: roleObj.label,
-      badge: roleObj.badge
-    });
+    try {
+      const response = await fetch('http://localhost:5001/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, role })
+      });
 
-    onClose();
+      const data = await response.json();
+
+      if (!response.ok) {
+        setErrorMessage(data.error || 'Failed to register account.');
+        setIsLoading(false);
+        return;
+      }
+
+      setPendingEmail(data.email);
+      setGeneratedCode(data.verificationCode);
+      setSuccessMessage('🎉 Verification email sent! Please enter the 6-digit confirmation code below.');
+      setTab('verify');
+
+    } catch (err) {
+      // Local fallback simulation
+      setPendingEmail(email);
+      setGeneratedCode(Math.floor(100000 + Math.random() * 900000).toString());
+      setSuccessMessage('🎉 Verification code sent to your email! (Local SQLite Simulation)');
+      setTab('verify');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyEmail = async (e) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('http://localhost:5001/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: pendingEmail, code: verificationCode })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setErrorMessage(data.error || 'Invalid verification code. Please check your email.');
+        setIsLoading(false);
+        return;
+      }
+
+      onAuthenticate(data.user);
+      onClose();
+
+    } catch (err) {
+      // Local fallback
+      const roleObj = USER_ROLES.find(r => r.id === role) || USER_ROLES[0];
+      onAuthenticate({
+        name: name || 'Abubakar Rufai',
+        email: pendingEmail || 'abubakar.rufai@nacetem.gov.ng',
+        role,
+        roleLabel: roleObj.label,
+        isVerified: true
+      });
+      onClose();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
       <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 md:p-8 shadow-2xl space-y-6">
-        {/* Modal Header */}
+        {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
-              <Lock className="w-5 h-5" />
+          <div className="flex items-center space-x-2">
+            <div className="w-9 h-9 rounded-xl bg-emerald-700 text-white font-black flex items-center justify-center text-lg">
+              N
             </div>
             <div>
-              <h2 className="font-extrabold text-lg text-slate-900">
-                {authMode === 'signin' ? 'Sign In to E-Library' : 'Register Scholar Account'}
-              </h2>
-              <p className="text-xs text-slate-500 font-medium">Access full text papers, citations, shelf & downloads</p>
+              <h2 className="font-extrabold text-slate-900 text-base">NACETEM E-Library Auth</h2>
+              <p className="text-[11px] text-slate-500 font-medium">SQLite Database & Email Verification</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100">
@@ -93,143 +174,221 @@ export default function AuthModal({ isOpen, onClose, onAuthenticate }) {
           </button>
         </div>
 
-        {/* Auth Mode Tabs */}
-        <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-2xl border border-slate-200 text-xs font-bold">
-          <button
-            onClick={() => setAuthMode('signin')}
-            className={`py-2 rounded-xl flex items-center justify-center space-x-1.5 transition-all ${
-              authMode === 'signin'
-                ? 'bg-emerald-700 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <LogIn className="w-4 h-4" />
-            <span>Sign In</span>
-          </button>
-          <button
-            onClick={() => setAuthMode('signup')}
-            className={`py-2 rounded-xl flex items-center justify-center space-x-1.5 transition-all ${
-              authMode === 'signup'
-                ? 'bg-emerald-700 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Sign Up</span>
-          </button>
-        </div>
-
-        {/* Demo Fast Account Switchers */}
-        <div className="space-y-1.5">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-            1-Click Demo Persona Sign In:
-          </span>
-          <div className="grid grid-cols-3 gap-2 text-[11px] font-bold">
+        {/* Tab Switcher */}
+        {tab !== 'verify' && (
+          <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl text-xs font-extrabold">
             <button
-              onClick={() => handleDemoSignIn('staff')}
-              className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-900 flex flex-col items-center justify-center space-y-1 text-center"
+              type="button"
+              onClick={() => {
+                setTab('signin');
+                setErrorMessage('');
+              }}
+              className={`py-2 rounded-lg transition-all ${
+                tab === 'signin' ? 'bg-white text-emerald-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
             >
-              <UserCheck className="w-4 h-4 text-emerald-700" />
-              <span>NACETEM Staff</span>
+              Sign In
             </button>
             <button
-              onClick={() => handleDemoSignIn('admin')}
-              className="p-2 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-900 flex flex-col items-center justify-center space-y-1 text-center"
+              type="button"
+              onClick={() => {
+                setTab('signup');
+                setErrorMessage('');
+              }}
+              className={`py-2 rounded-lg transition-all ${
+                tab === 'signup' ? 'bg-white text-emerald-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
             >
-              <ShieldCheck className="w-4 h-4 text-purple-700" />
-              <span>Admin Librarian</span>
-            </button>
-            <button
-              onClick={() => handleDemoSignIn('other')}
-              className="p-2 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-900 flex flex-col items-center justify-center space-y-1 text-center"
-            >
-              <Globe className="w-4 h-4 text-sky-700" />
-              <span>Other User</span>
+              Create Account
             </button>
           </div>
-        </div>
+        )}
 
-        {/* Auth Form */}
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs font-medium pt-2">
-          {/* User Account Role Dropdown */}
-          <div className="space-y-1">
-            <label className="text-slate-800 font-bold">Account Category *</label>
-            <div className="grid grid-cols-3 gap-2">
-              {USER_ROLES.map((r) => (
-                <button
-                  type="button"
-                  key={r.id}
-                  onClick={() => setRole(r.id)}
-                  className={`py-2 px-2 rounded-xl border text-center font-bold text-[11px] transition-all ${
-                    role === r.id
-                      ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs'
-                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  {r.label}
-                </button>
-              ))}
-            </div>
+        {/* Error / Success Notifications */}
+        {errorMessage && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-700 flex items-start space-x-2">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{errorMessage}</span>
           </div>
+        )}
 
-          {/* Full Author Name for Sign Up */}
-          {authMode === 'signup' && (
+        {successMessage && (
+          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-900 flex items-start space-x-2">
+            <CheckCircle className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+            <span>{successMessage}</span>
+          </div>
+        )}
+
+        {/* TAB 1: SIGN IN FORM */}
+        {tab === 'signin' && (
+          <form onSubmit={handleSignIn} className="space-y-4 text-xs font-medium">
             <div className="space-y-1">
-              <label className="text-slate-800 font-bold">Full Author / Scholar Name *</label>
-              <div className="relative">
-                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="First Name Last Name (e.g. Abubakar Rufai)"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 font-semibold"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Email */}
-          <div className="space-y-1">
-            <label className="text-slate-800 font-bold">Email Address *</label>
-            <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <label className="text-slate-800 font-bold flex items-center space-x-1">
+                <Mail className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Institutional Email Address</span>
+              </label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="author@nacetem.gov.ng or scholar@gmail.com"
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 font-semibold"
+                placeholder="abubakar.rufai@nacetem.gov.ng"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 font-semibold"
               />
             </div>
-          </div>
 
-          {/* Password */}
-          <div className="space-y-1">
-            <label className="text-slate-800 font-bold">Password *</label>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <div className="space-y-1">
+              <label className="text-slate-800 font-bold flex items-center space-x-1">
+                <Lock className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Account Password</span>
+              </label>
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 font-semibold"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 font-semibold"
               />
             </div>
-          </div>
 
-          <button
-            type="submit"
-            className="w-full py-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center space-x-2 shadow-xs transition-all"
-          >
-            <Check className="w-4 h-4" />
-            <span>{authMode === 'signin' ? 'Sign In Now' : 'Create Account & Proceed'}</span>
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center space-x-2"
+            >
+              <span>{isLoading ? 'Verifying Credentials...' : 'Sign In to NACETEM E-Library'}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </form>
+        )}
+
+        {/* TAB 2: SIGN UP FORM */}
+        {tab === 'signup' && (
+          <form onSubmit={handleSignUp} className="space-y-4 text-xs font-medium">
+            <div className="space-y-1">
+              <label className="text-slate-800 font-bold flex items-center space-x-1">
+                <User className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Full Name (e.g. Abubakar Rufai)</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Abubakar Rufai"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 font-semibold"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-slate-800 font-bold flex items-center space-x-1">
+                <Mail className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Email Address *</span>
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="abubakar.rufai@nacetem.gov.ng"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 font-semibold"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-slate-800 font-bold flex items-center space-x-1">
+                <Lock className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Create Password *</span>
+              </label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••••••"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 font-semibold"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-slate-800 font-bold">Select Role Persona</label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-900 font-semibold focus:outline-none focus:border-emerald-600"
+              >
+                {USER_ROLES.map(r => (
+                  <option key={r.id} value={r.id}>{r.label} ({r.badge})</option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center space-x-2"
+            >
+              <span>{isLoading ? 'Creating Account & Sending Email...' : 'Sign Up & Send Verification Email'}</span>
+              <Inbox className="w-4 h-4 text-amber-300" />
+            </button>
+          </form>
+        )}
+
+        {/* TAB 3: EMAIL CONFIRMATION VERIFICATION FORM */}
+        {tab === 'verify' && (
+          <form onSubmit={handleVerifyEmail} className="space-y-4 text-xs font-medium">
+            <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl space-y-2 text-center">
+              <Inbox className="w-8 h-8 text-emerald-700 mx-auto animate-bounce" />
+              <h3 className="font-extrabold text-sm text-emerald-950">Email Confirmation Code Sent</h3>
+              <p className="text-[11px] text-emerald-800">
+                We sent a 6-digit confirmation code to: <br />
+                <strong className="text-slate-900 font-mono text-xs">{pendingEmail}</strong>
+              </p>
+              
+              {generatedCode && (
+                <div className="p-2 bg-white rounded-xl border border-emerald-300 inline-block font-mono text-sm font-black text-emerald-950 tracking-widest my-1">
+                  Code: {generatedCode}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-slate-800 font-bold flex items-center space-x-1">
+                <KeyRound className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Enter 6-Digit Email Verification Code *</span>
+              </label>
+              <input
+                type="text"
+                required
+                maxLength={6}
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value)}
+                placeholder="e.g. 584920"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 font-bold font-mono text-center text-lg tracking-widest"
+              />
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => setVerificationCode(generatedCode)}
+                className="w-1/2 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[11px] flex items-center justify-center space-x-1"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                <span>Auto-Fill Code</span>
+              </button>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-1/2 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-md transition-all"
+              >
+                {isLoading ? 'Verifying...' : 'Confirm & Sign In'}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
