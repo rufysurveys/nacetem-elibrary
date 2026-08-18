@@ -1,9 +1,9 @@
 export const NACETEM_COLLECTIONS = [
   { id: 'all', name: 'All Collections', count: 40 },
-  { id: 'lecture-series', name: 'Departmental Lecture Series', count: 12 },
-  { id: 'ppl-series', name: 'Planning, Programming & Linkages Lecture Series', count: 4 },
-  { id: 'researchers-series', name: 'Researchers Lecture Series', count: 4 },
-  { id: 'ict-series', name: 'ICT Lecture Series', count: 4 },
+  { id: 'lecture-series', name: 'Departmental Monthly Lecture Series', count: 12 },
+  { id: 'ict-series', name: '1. ICT Lecture Series', count: 4 },
+  { id: 'researchers-series', name: '2. Researchers Lecture Series', count: 4 },
+  { id: 'ppl-series', name: '3. Planning, Programming & Linkages Lecture Series', count: 4 },
   { id: 'policy', name: 'STI Policy & Governance', count: 12 },
   { id: 'ai-tech', name: 'AI & Emerging Tech', count: 6 },
   { id: 'green-energy', name: 'Green Energy & Climate', count: 6 },
@@ -13,9 +13,9 @@ export const NACETEM_COLLECTIONS = [
 ];
 
 export const LECTURE_SERIES_OPTIONS = [
-  'Planning, Programming and Linkages Lecture Series',
+  'ICT Lecture Series',
   'Researchers Lecture Series',
-  'ICT Lecture Series'
+  'Planning, Programming and Linkages Lecture Series'
 ];
 
 export const DOCUMENT_TYPES = [
@@ -76,52 +76,52 @@ export const INITIAL_BOOKS = [
       }
     ]
   },
-  // Departmental Lecture Series Seed Papers
+  // Departmental Monthly Lecture Series Seed Papers
   {
-    id: 'lect-ppl-2026-001',
-    title: 'Strategic Planning, Project Programming, and Inter-Agency Linkages in STI Governance',
-    subtitle: 'Departmental Lecture Series: Planning, Programming and Linkages (PPL Series)',
-    authors: ['Dr. Akindele Joshua Famurewa', 'PPL Directorate Team'],
-    institution: 'NACETEM PPL Directorate (Departmental Lecture Series)',
+    id: 'lect-ict-2026-003',
+    title: 'Artificial Intelligence, Cloud Computing, and Cybersecurity Systems for Public Sector IT',
+    subtitle: 'Departmental Monthly Lecture Series: 1. ICT Lecture Series',
+    authors: ['Abubakar Rufai', 'Dr. Kazeem Abubakar'],
+    institution: 'NACETEM ICT Directorate (Departmental Monthly Lecture Series)',
     publisher: 'National Centre for Technology Management (NACETEM)',
-    category: 'Departmental Lecture Series',
-    lectureSeriesSub: 'Planning, Programming and Linkages Lecture Series',
+    category: 'Departmental Monthly Lecture Series',
+    lectureSeriesSub: 'ICT Lecture Series',
     type: 'Lecture Notes / Presentation',
     year: 2026,
-    doi: '10.5281/nacetem.ppl.2026.01',
-    isbn: '978-978-54299-1-0',
+    doi: '10.5281/nacetem.ict.2026.03',
+    isbn: '978-978-54299-3-4',
     accessLevel: 'Open Access',
     rating: 4.9,
-    citationsCount: 88,
-    downloadsCount: 2450,
-    pageCount: 42,
-    coverColor: 'from-amber-600 via-orange-800 to-slate-900',
-    coverAccent: '#d97706',
+    citationsCount: 130,
+    downloadsCount: 3890,
+    pageCount: 54,
+    coverColor: 'from-blue-700 via-indigo-900 to-slate-900',
+    coverAccent: '#1d4ed8',
     featured: true,
     audioAvailable: true,
-    abstract: `Delivered under the NACETEM Departmental Lecture Series (Planning, Programming and Linkages), this monograph provides practical methodologies for aligning STI project portfolios with national development plans and ECOWAS science indicators.`,
+    abstract: `Delivered under the Departmental Monthly Lecture Series (1. ICT Lecture Series), this technical monograph covers cloud deployment architectures, machine learning threat detection models, and data privacy compliance for public sector information infrastructure.`,
     keyTakeaways: [
-      'Outlines the 5-phase project programming matrix for institutional STI interventions.',
-      'Establishes key performance indicators for inter-departmental linkages.'
+      'Outlines zero-trust architecture design for public sector digital repositories.',
+      'Provides practical guidelines for compliance with the Nigeria Data Protection Act.'
     ],
     policyRecommendations: [
-      'Standardize project programming templates across all federal research institutes.'
+      'Transition public records to encrypted cloud infrastructure.'
     ],
     fullText: [
       {
-        sectionTitle: 'Lecture Module 1: Strategic Planning Frameworks',
-        content: `Planning, programming, and linkages constitute the operational bedrock of effective science policy execution. This lecture series module equips researchers with tools for mapping stakeholder networks.`
+        sectionTitle: 'Lecture Module 1: Cloud Architecture & Cybersecurity',
+        content: `Information and Communication Technology (ICT) infrastructure is vital for modern governance. This lecture provides hands-on configurations for securing enterprise systems.`
       }
     ]
   },
   {
     id: 'lect-res-2026-002',
     title: 'Advanced Econometric Methodologies and Data Integrity in STI Surveys',
-    subtitle: 'Departmental Lecture Series: Researchers Lecture Series',
+    subtitle: 'Departmental Monthly Lecture Series: 2. Researchers Lecture Series',
     authors: ['Prof. Olumuyiwa Olamade', 'Dr. Olawale Rafiu Olaopa'],
-    institution: 'NACETEM Research Directorate (Departmental Lecture Series)',
+    institution: 'NACETEM Research Directorate (Departmental Monthly Lecture Series)',
     publisher: 'National Centre for Technology Management (NACETEM)',
-    category: 'Departmental Lecture Series',
+    category: 'Departmental Monthly Lecture Series',
     lectureSeriesSub: 'Researchers Lecture Series',
     type: 'Lecture Notes / Presentation',
     year: 2026,
@@ -136,7 +136,7 @@ export const INITIAL_BOOKS = [
     coverAccent: '#0f766e',
     featured: true,
     audioAvailable: true,
-    abstract: `Delivered as part of the Researchers Lecture Series, this comprehensive guide covers advanced micro-data sampling, survey design, Oslo Manual indicators, and econometric modeling for STI policy researchers.`,
+    abstract: `Delivered under the Departmental Monthly Lecture Series (2. Researchers Lecture Series), this comprehensive guide covers advanced micro-data sampling, survey design, Oslo Manual indicators, and econometric modeling for STI policy researchers.`,
     keyTakeaways: [
       'Provides practical tutorials on probit regression and structural equation modeling.',
       'Details data validation procedures for large-scale industrial innovation surveys.'
@@ -152,39 +152,39 @@ export const INITIAL_BOOKS = [
     ]
   },
   {
-    id: 'lect-ict-2026-003',
-    title: 'Artificial Intelligence, Cloud Computing, and Cybersecurity Systems for Public Sector IT',
-    subtitle: 'Departmental Lecture Series: ICT Lecture Series',
-    authors: ['Abubakar Rufai', 'Dr. Kazeem Abubakar'],
-    institution: 'NACETEM ICT Directorate (Departmental Lecture Series)',
+    id: 'lect-ppl-2026-001',
+    title: 'Strategic Planning, Project Programming, and Inter-Agency Linkages in STI Governance',
+    subtitle: 'Departmental Monthly Lecture Series: 3. Planning, Programming and Linkages Lecture Series',
+    authors: ['Dr. Akindele Joshua Famurewa', 'PPL Directorate Team'],
+    institution: 'NACETEM PPL Directorate (Departmental Monthly Lecture Series)',
     publisher: 'National Centre for Technology Management (NACETEM)',
-    category: 'Departmental Lecture Series',
-    lectureSeriesSub: 'ICT Lecture Series',
+    category: 'Departmental Monthly Lecture Series',
+    lectureSeriesSub: 'Planning, Programming and Linkages Lecture Series',
     type: 'Lecture Notes / Presentation',
     year: 2026,
-    doi: '10.5281/nacetem.ict.2026.03',
-    isbn: '978-978-54299-3-4',
+    doi: '10.5281/nacetem.ppl.2026.01',
+    isbn: '978-978-54299-1-0',
     accessLevel: 'Open Access',
     rating: 4.9,
-    citationsCount: 130,
-    downloadsCount: 3890,
-    pageCount: 54,
-    coverColor: 'from-blue-700 via-indigo-900 to-slate-900',
-    coverAccent: '#1d4ed8',
+    citationsCount: 88,
+    downloadsCount: 2450,
+    pageCount: 42,
+    coverColor: 'from-amber-600 via-orange-800 to-slate-900',
+    coverAccent: '#d97706',
     featured: true,
     audioAvailable: true,
-    abstract: `Delivered under the ICT Lecture Series, this technical monograph covers cloud deployment architectures, machine learning threat detection models, and data privacy compliance for public sector information infrastructure.`,
+    abstract: `Delivered under the Departmental Monthly Lecture Series (3. Planning, Programming and Linkages Lecture Series), this monograph provides practical methodologies for aligning STI project portfolios with national development plans and ECOWAS science indicators.`,
     keyTakeaways: [
-      'Outlines zero-trust architecture design for public sector digital repositories.',
-      'Provides practical guidelines for compliance with the Nigeria Data Protection Act.'
+      'Outlines the 5-phase project programming matrix for institutional STI interventions.',
+      'Establishes key performance indicators for inter-departmental linkages.'
     ],
     policyRecommendations: [
-      'Transition public records to encrypted cloud infrastructure.'
+      'Standardize project programming templates across all federal research institutes.'
     ],
     fullText: [
       {
-        sectionTitle: 'Lecture Module 1: Cloud Architecture & Cybersecurity',
-        content: `Information and Communication Technology (ICT) infrastructure is vital for modern governance. This lecture provides hands-on configurations for securing enterprise systems.`
+        sectionTitle: 'Lecture Module 1: Strategic Planning Frameworks',
+        content: `Planning, programming, and linkages constitute the operational bedrock of effective science policy execution. This lecture series module equips researchers with tools for mapping stakeholder networks.`
       }
     ]
   },
@@ -273,7 +273,7 @@ export const INITIAL_USER_STATE = {
       progress: 65
     }
   ],
-  savedFavorites: ['user-paper-priority-rufai', 'lect-ppl-2026-001', 'lect-ict-2026-003'],
+  savedFavorites: ['user-paper-priority-rufai', 'lect-ict-2026-003', 'lect-res-2026-002', 'lect-ppl-2026-001'],
   readingHistory: [
     { bookId: 'user-paper-priority-rufai', lastReadPage: 44, timestamp: '2026-08-11T14:20:00' }
   ],

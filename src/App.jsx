@@ -139,21 +139,28 @@ export default function App() {
     showToast('Signed out of NACETEM E-Library.');
   };
 
+  const handleSelectLectureSeries = (seriesName) => {
+    setSearchQuery(seriesName);
+    setSelectedCategory('lecture-series');
+    showToast(`Filtered by ${seriesName}`);
+  };
+
   const filteredBooks = books.filter((book) => {
     const matchesQuery = 
       book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (book.subtitle && book.subtitle.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (Array.isArray(book.authors) ? book.authors.some(a => a.toLowerCase().includes(searchQuery.toLowerCase())) : book.authors.toLowerCase().includes(searchQuery.toLowerCase())) ||
       book.abstract.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (book.doi && book.doi.toLowerCase().includes(searchQuery.toLowerCase()));
+      (book.doi && book.doi.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (book.lectureSeriesSub && book.lectureSeriesSub.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesCategory = 
       selectedCategory === 'all' || 
       book.category.toLowerCase().includes(selectedCategory.toLowerCase()) ||
       (selectedCategory === 'lecture-series' && (book.category.includes('Departmental') || book.category.includes('Lecture'))) ||
-      (selectedCategory === 'ppl-series' && (book.lectureSeriesSub?.includes('Planning') || book.subtitle?.includes('Planning'))) ||
-      (selectedCategory === 'researchers-series' && (book.lectureSeriesSub?.includes('Researchers') || book.subtitle?.includes('Researchers'))) ||
       (selectedCategory === 'ict-series' && (book.lectureSeriesSub?.includes('ICT') || book.subtitle?.includes('ICT'))) ||
+      (selectedCategory === 'researchers-series' && (book.lectureSeriesSub?.includes('Researchers') || book.subtitle?.includes('Researchers'))) ||
+      (selectedCategory === 'ppl-series' && (book.lectureSeriesSub?.includes('Planning') || book.subtitle?.includes('Planning'))) ||
       (selectedCategory === 'policy' && book.category.includes('Policy')) ||
       (selectedCategory === 'ai-tech' && book.category.includes('AI')) ||
       (selectedCategory === 'green-energy' && book.category.includes('Green')) ||
@@ -284,11 +291,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-      {/* Header Bar */}
+      {/* Header Bar with Departmental Monthly Lecture Series Menu */}
       <Header
         currentRole={currentRole}
         setCurrentRole={setCurrentRole}
-        onOpenAiCopilot={() => setIsAiCopilotOpen(true)}
         onOpenDashboard={() => setActiveTab('dashboard')}
         onOpenUpload={() => setIsUploadOpen(true)}
         onOpenAdmin={() => setActiveTab('admin')}
@@ -303,12 +309,17 @@ export default function App() {
         setActiveTab={setActiveTab}
         borrowedCount={userState.borrowedBooks.length}
         savedCount={userState.savedFavorites.length}
+        onSelectLectureSeries={handleSelectLectureSeries}
       />
 
       {/* Main View Area */}
       <main className="flex-1">
         {activeTab === 'catalog' && (
           <div className="space-y-8 pb-16">
+            {/* Official Welcome Message Banner from Director-General Dr. Olushola Odusanya (Top of Page) */}
+            <DgWelcomeBanner />
+
+            {/* Hero Search Section */}
             <HeroSearch
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
@@ -321,9 +332,6 @@ export default function App() {
               totalResults={filteredBooks.length}
               onTriggerAiPrompt={handleTriggerAiPrompt}
             />
-
-            {/* Official Welcome Message Banner from Director-General Dr. Olushola Odusanya */}
-            <DgWelcomeBanner />
 
             <div className="container mx-auto px-4 max-w-7xl">
               {filteredBooks.length === 0 ? (
@@ -397,17 +405,6 @@ export default function App() {
           notes={userState.notes.filter(n => n.bookId === readingBook.id)}
         />
       )}
-
-      {/* AI Copilot Drawer */}
-      <AiCopilotDrawer
-        isOpen={isAiCopilotOpen}
-        onClose={() => {
-          setIsAiCopilotOpen(false);
-          setFocusedBookForAi(null);
-        }}
-        focusedBook={focusedBookForAi}
-        allBooks={books}
-      />
 
       {/* Upload Repository Modal */}
       <RepositoryUploadModal

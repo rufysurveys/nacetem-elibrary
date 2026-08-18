@@ -21,14 +21,14 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
   const [authors, setAuthors] = useState(defaultAuthorName);
-  const [pubYear, setPubYear] = useState('2015');
+  const [pubYear, setPubYear] = useState('2026');
   const [publisher, setPublisher] = useState('National Centre for Technology Management (NACETEM)');
   const [volume, setVolume] = useState('');
   const [issue, setIssue] = useState('');
   const [pages, setPages] = useState('');
   const [customDoi, setCustomDoi] = useState('');
-  const [category, setCategory] = useState('Departmental Lecture Series');
-  const [lectureSeriesSub, setLectureSeriesSub] = useState('Planning, Programming and Linkages Lecture Series');
+  const [category, setCategory] = useState('Departmental Monthly Lecture Series');
+  const [lectureSeriesSub, setLectureSeriesSub] = useState('ICT Lecture Series');
   const [type, setType] = useState('Lecture Notes / Presentation');
   const [abstract, setAbstract] = useState('');
   const [keyTakeaways, setKeyTakeaways] = useState('');
@@ -97,7 +97,7 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    const finalTitle = title.trim() || (uploadedFile ? uploadedFile.name : 'Departmental Lecture Series Document');
+    const finalTitle = title.trim() || (uploadedFile ? uploadedFile.name : 'Departmental Monthly Lecture Series Document');
     const finalAuthors = authors.trim() ? authors.split(/;|,/).map(a => a.trim()).filter(Boolean) : [defaultAuthorName];
     const finalAbstract = abstract.trim() || `Official document "${finalTitle}" deposited under ${lectureSeriesSub} by ${finalAuthors.join(', ')}. Full text indexed for online reading and download.`;
 
@@ -112,7 +112,7 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
       ];
 
       const policyArr = policyRecommendations ? policyRecommendations.split('\n').filter(Boolean) : [
-        'Standardize departmental lecture series distribution across zonal centers.',
+        'Standardize departmental monthly lecture series distribution across zonal centers.',
         'Establish continuous professional skill development modules.'
       ];
 
@@ -121,9 +121,9 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
         isUserUploaded: true,
         uploadedBy: currentUser?.name || defaultAuthorName,
         title: finalTitle,
-        subtitle: subtitle.trim() || `Departmental Lecture Series: ${lectureSeriesSub}`,
+        subtitle: subtitle.trim() || `Departmental Monthly Lecture Series: ${lectureSeriesSub}`,
         authors: finalAuthors,
-        institution: `${publisher.trim()} (Departmental Lecture Series)`,
+        institution: `${publisher.trim()} (Departmental Monthly Lecture Series)`,
         publisher: publisher.trim() || 'National Centre for Technology Management (NACETEM)',
         category,
         lectureSeriesSub: category.includes('Departmental') ? lectureSeriesSub : null,
@@ -155,7 +155,7 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
           },
           {
             sectionTitle: '1. Lecture Module & Frameworks',
-            content: `This publication by ${finalAuthors.join(', ')} forms part of the NACETEM Departmental Lecture Series (${lectureSeriesSub}).\n\nTitle: ${finalTitle}\nPublished: ${pubYear || 2026}.`
+            content: `This publication by ${finalAuthors.join(', ')} forms part of the NACETEM Departmental Monthly Lecture Series (${lectureSeriesSub}).\n\nTitle: ${finalTitle}\nPublished: ${pubYear || 2026}.`
           },
           {
             sectionTitle: '2. Implementation & Key References',
@@ -181,7 +181,7 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
             </div>
             <div>
               <h2 className="font-extrabold text-lg text-slate-900">Upload Document / Lecture Series</h2>
-              <p className="text-xs text-slate-500 font-medium">Supports Departmental Lecture Series, Papers, PDF & Word Files</p>
+              <p className="text-xs text-slate-500 font-medium">Departmental Monthly Lecture Series, Papers, PDF & Word Files</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100">
@@ -235,7 +235,7 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Planning, Programming and Inter-Agency Linkages in STI Governance"
+              placeholder="e.g. Artificial Intelligence and Cybersecurity for Public Sector IT"
               className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 font-semibold"
             />
           </div>
@@ -284,7 +284,7 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
               </select>
             </div>
 
-            {/* Departmental Lecture Series Sub-Option */}
+            {/* Departmental Monthly Lecture Series Sub-Option */}
             {category.includes('Departmental') ? (
               <div className="space-y-1">
                 <label className="text-slate-800 font-bold flex items-center space-x-1 text-emerald-800">

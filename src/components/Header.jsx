@@ -1,26 +1,23 @@
 import React, { useState } from 'react';
 import { 
   BookOpen, 
-  Sparkles, 
-  UserCheck, 
-  ShieldCheck, 
-  Globe, 
-  Bookmark, 
-  Layers, 
   UploadCloud, 
-  BarChart3, 
-  ChevronDown,
-  LogIn,
+  Bookmark, 
+  FileCheck, 
+  GraduationCap, 
+  Layers, 
+  ChevronDown, 
+  User, 
+  ShieldCheck, 
   LogOut,
   Quote
 } from 'lucide-react';
 import { USER_ROLES } from '../data/mockLibraryData';
 
-export default function Header({ 
-  currentRole, 
-  setCurrentRole, 
-  onOpenAiCopilot, 
-  onOpenDashboard, 
+export default function Header({
+  currentRole,
+  setCurrentRole,
+  onOpenDashboard,
   onOpenUpload,
   onOpenAdmin,
   onOpenAuth,
@@ -30,193 +27,212 @@ export default function Header({
   activeTab,
   setActiveTab,
   borrowedCount,
-  savedCount
+  savedCount,
+  onSelectLectureSeries
 }) {
-  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
+  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  const [showLectureDropdown, setShowLectureDropdown] = useState(false);
 
-  const getRoleIcon = (roleId) => {
-    switch (roleId) {
-      case 'staff': return <UserCheck className="w-4 h-4 text-emerald-600" />;
-      case 'admin': return <ShieldCheck className="w-4 h-4 text-purple-600" />;
-      default: return <Globe className="w-4 h-4 text-slate-500" />;
+  const activeRoleObj = USER_ROLES.find(r => r.id === currentRole) || USER_ROLES[1];
+
+  const handleLectureClick = (seriesName) => {
+    setShowLectureDropdown(false);
+    setActiveTab('catalog');
+    if (onSelectLectureSeries) {
+      onSelectLectureSeries(seriesName);
     }
   };
 
-  const activeRoleObj = USER_ROLES.find(r => r.id === currentRole) || USER_ROLES[0];
-
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
-      {/* Top Banner Notice */}
-      <div className="bg-slate-100 border-b border-slate-200 px-4 py-1.5 text-xs text-slate-700 flex items-center justify-between">
-        <div className="flex items-center space-x-2 container mx-auto">
-          <span className="inline-block w-2 h-2 rounded-full bg-emerald-600 animate-ping"></span>
-          <span className="font-bold text-emerald-800">FEDERAL REPUBLIC OF NIGERIA</span>
-          <span className="text-slate-300">•</span>
-          <span>Federal Ministry of Innovation, Science and Technology</span>
-          <span className="hidden md:inline text-slate-300">•</span>
-          <span className="hidden md:inline text-slate-600">National Centre for Technology Management (NACETEM) Digital Library</span>
-        </div>
-        <div className="hidden lg:flex items-center space-x-4">
-          <span className="text-emerald-700 font-mono text-[11px] font-semibold">System Status: Online | v2.6 Light Portal</span>
-        </div>
-      </div>
-
-      {/* Main Navbar */}
-      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-        {/* Brand Logo & Title */}
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs transition-all">
+      <div className="container mx-auto px-4 max-w-7xl h-20 flex items-center justify-between gap-4">
+        {/* Left: NACETEM Official Branding */}
         <div 
-          onClick={() => setActiveTab('catalog')} 
+          onClick={() => setActiveTab('catalog')}
           className="flex items-center space-x-3 cursor-pointer group"
         >
-          <div className="relative">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-600 via-teal-700 to-emerald-800 flex items-center justify-center shadow-md group-hover:scale-105 transition-transform duration-300">
-              <BookOpen className="w-6 h-6 text-white" />
-            </div>
-            <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white"></span>
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-700 to-teal-900 flex items-center justify-center text-white font-black text-xl shadow-md border-2 border-emerald-100 group-hover:scale-105 transition-transform">
+            N
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="font-black text-xl tracking-tight text-slate-900 group-hover:text-emerald-700 transition-colors">
+              <span className="font-black text-base md:text-lg text-slate-900 tracking-tight leading-none">
                 NACETEM
               </span>
-              <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+              <span className="bg-emerald-100 text-emerald-900 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider border border-emerald-300">
                 E-Library
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 font-medium">Science, Technology & Innovation Knowledge Hub</p>
+            <p className="text-[11px] text-slate-500 font-semibold leading-tight">
+              National Centre for Technology Management
+            </p>
           </div>
         </div>
 
-        {/* Navigation Actions */}
-        <div className="flex items-center space-x-2 md:space-x-3">
-          {/* Navigation Tabs */}
+        {/* Center Navigation Links */}
+        <nav className="hidden lg:flex items-center space-x-1 text-xs font-extrabold">
           <button
             onClick={() => setActiveTab('catalog')}
-            className={`px-3.5 py-2 rounded-xl text-sm font-semibold transition-all flex items-center space-x-1.5 ${
-              activeTab === 'catalog' 
-                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            className={`px-3.5 py-2 rounded-xl transition-all flex items-center space-x-1.5 ${
+              activeTab === 'catalog'
+                ? 'bg-emerald-50 text-emerald-900 border border-emerald-300'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <Layers className="w-4 h-4 text-emerald-700" />
-            <span className="hidden sm:inline">Catalog</span>
+            <BookOpen className="w-4 h-4 text-emerald-700" />
+            <span>Repository Catalog</span>
           </button>
 
-          {/* Universal Citation Generator */}
-          <button
-            onClick={onOpenCitation}
-            className="px-3.5 py-2 rounded-xl text-sm font-bold bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 transition-all flex items-center space-x-1.5"
-            title="Cite Any Document or Custom Text (APA, Harvard, IEEE, MLA, Chicago, BibTeX)"
-          >
-            <Quote className="w-4 h-4 text-amber-700" />
-            <span className="hidden md:inline">Cite Tool</span>
-          </button>
+          {/* Departmental Monthly Lecture Series Dropdown (Replaces STI-Assist AI) */}
+          <div className="relative">
+            <button
+              onClick={() => setShowLectureDropdown(!showLectureDropdown)}
+              className="px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 transition-all flex items-center space-x-1.5 font-black shadow-2xs"
+            >
+              <GraduationCap className="w-4 h-4 text-amber-700" />
+              <span>Departmental Monthly Lecture Series</span>
+              <ChevronDown className="w-3.5 h-3.5 text-amber-700" />
+            </button>
 
-          {/* AI Copilot Button */}
-          <button
-            onClick={onOpenAiCopilot}
-            className="px-3.5 py-2 rounded-xl text-sm font-bold bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white shadow-md flex items-center space-x-2 transition-all hover:scale-105 border border-emerald-500"
-          >
-            <Sparkles className="w-4 h-4 text-amber-300 animate-bounce" />
-            <span className="hidden sm:inline">STI-Assist AI</span>
-          </button>
+            {showLectureDropdown && (
+              <div className="absolute left-0 mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 animate-in fade-in">
+                <div className="px-3 py-1.5 border-b border-slate-100 mb-1">
+                  <p className="text-[11px] font-black text-amber-950 uppercase tracking-wider">
+                    Departmental Monthly Lecture Series
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-medium">Select sub-series to view or upload documents</p>
+                </div>
 
-          {/* User Bookshelf / Dashboard */}
+                <button
+                  onClick={() => handleLectureClick('ICT Lecture Series')}
+                  className="w-full px-3.5 py-2 text-left hover:bg-emerald-50 text-slate-800 hover:text-emerald-900 font-bold text-xs flex items-center space-x-2"
+                >
+                  <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                  <span>1. ICT Lecture Series</span>
+                </button>
+
+                <button
+                  onClick={() => handleLectureClick('Researchers Lecture Series')}
+                  className="w-full px-3.5 py-2 text-left hover:bg-emerald-50 text-slate-800 hover:text-emerald-900 font-bold text-xs flex items-center space-x-2"
+                >
+                  <span className="w-2 h-2 rounded-full bg-teal-600"></span>
+                  <span>2. Researchers Lecture Series</span>
+                </button>
+
+                <button
+                  onClick={() => handleLectureClick('Planning, Programming and Linkages Lecture Series')}
+                  className="w-full px-3.5 py-2 text-left hover:bg-emerald-50 text-slate-800 hover:text-emerald-900 font-bold text-xs flex items-center space-x-2"
+                >
+                  <span className="w-2 h-2 rounded-full bg-amber-600"></span>
+                  <span>3. Planning, Programming & Linkages</span>
+                </button>
+
+                <div className="border-t border-slate-100 mt-1 pt-1.5 px-2">
+                  <button
+                    onClick={() => {
+                      setShowLectureDropdown(false);
+                      onOpenUpload();
+                    }}
+                    className="w-full py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 shadow-xs"
+                  >
+                    <UploadCloud className="w-3.5 h-3.5" />
+                    <span>Upload Lecture Series Doc</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <button
             onClick={onOpenDashboard}
-            className="relative px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-all flex items-center space-x-1.5 border border-slate-200"
+            className={`px-3.5 py-2 rounded-xl transition-all flex items-center space-x-1.5 ${
+              activeTab === 'dashboard'
+                ? 'bg-emerald-50 text-emerald-900 border border-emerald-300'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
+            }`}
           >
-            <Bookmark className="w-4 h-4 text-amber-600 fill-amber-100" />
-            <span className="hidden md:inline">My Shelf</span>
+            <FileCheck className="w-4 h-4 text-emerald-700" />
+            <span>My Shelf & Uploads</span>
             {(borrowedCount > 0 || savedCount > 0) && (
-              <span className="ml-1 bg-amber-500 text-white font-bold text-[10px] px-1.5 py-0.2 rounded-full">
+              <span className="bg-emerald-700 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full">
                 {borrowedCount + savedCount}
               </span>
             )}
           </button>
 
-          {/* Research Submission */}
-          <button
-            onClick={onOpenUpload}
-            className="hidden lg:flex px-3 py-2 rounded-xl text-sm font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all items-center space-x-1.5"
-          >
-            <UploadCloud className="w-4 h-4 text-emerald-700" />
-            <span>Submit Research</span>
-          </button>
-
-          {/* Admin Dashboard */}
           {currentRole === 'admin' && (
             <button
               onClick={onOpenAdmin}
-              className="px-3 py-2 rounded-xl text-sm font-semibold bg-purple-50 text-purple-800 border border-purple-200 hover:bg-purple-100 transition-all flex items-center space-x-1.5"
+              className={`px-3.5 py-2 rounded-xl transition-all flex items-center space-x-1.5 ${
+                activeTab === 'admin'
+                  ? 'bg-emerald-50 text-emerald-900 border border-emerald-300'
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
+              }`}
             >
-              <BarChart3 className="w-4 h-4 text-purple-700" />
-              <span className="hidden sm:inline">Admin Portal</span>
+              <ShieldCheck className="w-4 h-4 text-purple-700" />
+              <span>Librarian Admin</span>
             </button>
           )}
+        </nav>
 
-          {/* User Sign In / Account Status */}
-          {currentUser?.isAuthenticated ? (
-            <div className="flex items-center space-x-2">
-              <div className="hidden xl:flex flex-col text-right text-xs">
-                <span className="font-bold text-slate-900 leading-tight">{currentUser.name}</span>
-                <span className="text-[10px] text-emerald-700 font-mono font-semibold">{currentUser.roleLabel}</span>
-              </div>
+        {/* Right Action Buttons */}
+        <div className="flex items-center space-x-2">
+          {/* Upload Button */}
+          <button
+            onClick={onOpenUpload}
+            className="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs flex items-center space-x-1.5 shadow-xs transition-all hover:scale-105"
+          >
+            <UploadCloud className="w-4 h-4" />
+            <span className="hidden sm:inline">Upload Document</span>
+          </button>
 
-              <button
-                onClick={onLogout}
-                title="Sign Out"
-                className="p-2 rounded-xl bg-slate-100 hover:bg-red-50 border border-slate-200 hover:border-red-200 text-slate-600 hover:text-red-700 transition-all"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={onOpenAuth}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 flex items-center space-x-1.5 transition-all shadow-xs"
-            >
-              <LogIn className="w-4 h-4 text-emerald-700" />
-              <span>Sign In / Register</span>
-            </button>
-          )}
-
-          {/* Role Switcher Dropdown */}
+          {/* User Persona & Role Selector */}
           <div className="relative">
             <button
-              onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-              className="flex items-center space-x-2 px-3 py-2 rounded-xl bg-slate-100 border border-slate-300 hover:border-emerald-500 text-xs text-slate-800 font-semibold transition-all"
+              onClick={() => setShowRoleDropdown(!showRoleDropdown)}
+              className="p-2 md:px-3.5 md:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 font-extrabold text-xs flex items-center space-x-2 transition-all"
             >
-              {getRoleIcon(currentRole)}
-              <span className="hidden lg:inline">{activeRoleObj.label}</span>
+              <User className="w-4 h-4 text-emerald-700" />
+              <span className="hidden md:inline line-clamp-1 max-w-[120px]">{currentUser?.name || 'Abubakar Rufai'}</span>
               <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
             </button>
 
-            {isRoleDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white shadow-xl py-2 border border-slate-200 z-50 animate-in fade-in slide-in-from-top-2">
-                <div className="px-3 py-1.5 border-b border-slate-100 text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
-                  User Categories
+            {showRoleDropdown && (
+              <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 text-xs font-medium animate-in fade-in">
+                <div className="px-3.5 py-2 border-b border-slate-100">
+                  <p className="font-extrabold text-slate-900">{currentUser?.name || 'Abubakar Rufai'}</p>
+                  <p className="text-[11px] text-slate-500 font-semibold">Switch Active Role Persona:</p>
                 </div>
-                {USER_ROLES.map((role) => (
-                  <button
-                    key={role.id}
-                    onClick={() => {
-                      setCurrentRole(role.id);
-                      setIsRoleDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 transition-colors ${
-                      currentRole === role.id ? 'bg-emerald-50 text-emerald-900 font-bold' : 'text-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-2">
-                      {getRoleIcon(role.id)}
+
+                <div className="py-1">
+                  {USER_ROLES.map(role => (
+                    <button
+                      key={role.id}
+                      onClick={() => {
+                        setCurrentRole(role.id);
+                        setShowRoleDropdown(false);
+                      }}
+                      className={`w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center justify-between ${
+                        currentRole === role.id ? 'font-bold text-emerald-800 bg-emerald-50' : 'text-slate-700'
+                      }`}
+                    >
                       <span>{role.label}</span>
-                    </div>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono">
-                      {role.badge}
-                    </span>
+                      {currentRole === role.id && <span className="text-emerald-700 font-bold">✓</span>}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="border-t border-slate-100 pt-1">
+                  <button
+                    onClick={() => {
+                      setShowRoleDropdown(false);
+                      onOpenAuth();
+                    }}
+                    className="w-full px-3.5 py-2 text-left text-slate-700 hover:bg-slate-50 font-bold"
+                  >
+                    Switch Account / Sign In
                   </button>
-                ))}
+                </div>
               </div>
             )}
           </div>
