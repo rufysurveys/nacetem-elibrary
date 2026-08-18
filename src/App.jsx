@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import HeroSearch from './components/HeroSearch';
+import DgWelcomeBanner from './components/DgWelcomeBanner';
 import BookCard from './components/BookCard';
 import DocumentReaderModal from './components/DocumentReaderModal';
 import AiCopilotDrawer from './components/AiCopilotDrawer';
@@ -149,6 +150,10 @@ export default function App() {
     const matchesCategory = 
       selectedCategory === 'all' || 
       book.category.toLowerCase().includes(selectedCategory.toLowerCase()) ||
+      (selectedCategory === 'lecture-series' && (book.category.includes('Departmental') || book.category.includes('Lecture'))) ||
+      (selectedCategory === 'ppl-series' && (book.lectureSeriesSub?.includes('Planning') || book.subtitle?.includes('Planning'))) ||
+      (selectedCategory === 'researchers-series' && (book.lectureSeriesSub?.includes('Researchers') || book.subtitle?.includes('Researchers'))) ||
+      (selectedCategory === 'ict-series' && (book.lectureSeriesSub?.includes('ICT') || book.subtitle?.includes('ICT'))) ||
       (selectedCategory === 'policy' && book.category.includes('Policy')) ||
       (selectedCategory === 'ai-tech' && book.category.includes('AI')) ||
       (selectedCategory === 'green-energy' && book.category.includes('Green')) ||
@@ -233,26 +238,22 @@ export default function App() {
   const handleUploadBook = (newBook) => {
     const taggedBook = { ...newBook, isUserUploaded: true, uploadedBy: currentUser?.name || 'Abubakar Rufai' };
     
-    // Save to permanent dedicated user uploads key in localStorage
     const currentUploads = getStoredUserUploads();
     const updatedUploads = [taggedBook, ...currentUploads];
     localStorage.setItem('nacetem_user_uploaded_papers', JSON.stringify(updatedUploads));
 
-    // Update state immediately
     const updatedBooks = [taggedBook, ...books];
     setBooks(updatedBooks);
     
-    showToast('🚀 Priority Paper archived & saved permanently to your Dashboard!');
+    showToast('🚀 Priority Paper / Lecture Series archived & saved permanently!');
     confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
-    setActiveTab('dashboard'); // Switch immediately to dashboard view
+    setActiveTab('dashboard');
   };
 
   const handleDeleteBook = (bookId) => {
-    // Delete from permanent user uploads key
     const currentUploads = getStoredUserUploads().filter(b => b.id !== bookId);
     localStorage.setItem('nacetem_user_uploaded_papers', JSON.stringify(currentUploads));
 
-    // Update state
     const updatedBooks = books.filter(b => b.id !== bookId);
     setBooks(updatedBooks);
     showToast('Publication deleted from repository.');
@@ -320,6 +321,9 @@ export default function App() {
               totalResults={filteredBooks.length}
               onTriggerAiPrompt={handleTriggerAiPrompt}
             />
+
+            {/* Official Welcome Message Banner from Director-General Dr. Olushola Odusanya */}
+            <DgWelcomeBanner />
 
             <div className="container mx-auto px-4 max-w-7xl">
               {filteredBooks.length === 0 ? (
