@@ -5,12 +5,11 @@ import {
   Bookmark, 
   FileCheck, 
   GraduationCap, 
-  Layers, 
   ChevronDown, 
   User, 
   ShieldCheck, 
   LogOut,
-  Quote
+  CheckCircle
 } from 'lucide-react';
 import { USER_ROLES } from '../data/mockLibraryData';
 
@@ -33,14 +32,17 @@ export default function Header({
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [showLectureDropdown, setShowLectureDropdown] = useState(false);
 
-  const activeRoleObj = USER_ROLES.find(r => r.id === currentRole) || USER_ROLES[1];
-
   const handleLectureClick = (seriesName) => {
     setShowLectureDropdown(false);
     setActiveTab('catalog');
     if (onSelectLectureSeries) {
       onSelectLectureSeries(seriesName);
     }
+  };
+
+  const handleSignOut = () => {
+    setShowRoleDropdown(false);
+    onLogout();
   };
 
   return (
@@ -83,7 +85,7 @@ export default function Header({
             <span>Repository Catalog</span>
           </button>
 
-          {/* Departmental Monthly Lecture Series Dropdown (Replaces STI-Assist AI) */}
+          {/* Departmental Monthly Lecture Series Dropdown */}
           <div className="relative">
             <button
               onClick={() => setShowLectureDropdown(!showLectureDropdown)}
@@ -201,10 +203,11 @@ export default function Header({
               <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 text-xs font-medium animate-in fade-in">
                 <div className="px-3.5 py-2 border-b border-slate-100">
                   <p className="font-extrabold text-slate-900">{currentUser?.name || 'Abubakar Rufai'}</p>
-                  <p className="text-[11px] text-slate-500 font-semibold">Switch Active Role Persona:</p>
+                  <p className="text-[11px] text-slate-500 font-semibold">{currentUser?.email || 'abubakar.rufai@nacetem.gov.ng'}</p>
                 </div>
 
                 <div className="py-1">
+                  <p className="px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Switch Active Persona:</p>
                   {USER_ROLES.map(role => (
                     <button
                       key={role.id}
@@ -222,7 +225,7 @@ export default function Header({
                   ))}
                 </div>
 
-                <div className="border-t border-slate-100 pt-1">
+                <div className="border-t border-slate-100 pt-1 space-y-1">
                   <button
                     onClick={() => {
                       setShowRoleDropdown(false);
@@ -231,6 +234,15 @@ export default function Header({
                     className="w-full px-3.5 py-2 text-left text-slate-700 hover:bg-slate-50 font-bold"
                   >
                     Switch Account / Sign In
+                  </button>
+
+                  {/* Explicit Red Sign Out Button */}
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full px-3.5 py-2 text-left text-red-600 hover:bg-red-50 font-bold flex items-center space-x-2 border-t border-slate-100 pt-2"
+                  >
+                    <LogOut className="w-4 h-4 text-red-600" />
+                    <span>Sign Out / Logout</span>
                   </button>
                 </div>
               </div>

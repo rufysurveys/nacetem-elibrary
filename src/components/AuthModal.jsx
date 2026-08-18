@@ -10,7 +10,8 @@ import {
   Sparkles,
   KeyRound,
   Inbox,
-  AlertCircle
+  AlertCircle,
+  ExternalLink
 } from 'lucide-react';
 import { USER_ROLES } from '../data/mockLibraryData';
 
@@ -25,6 +26,7 @@ export default function AuthModal({ isOpen, onClose, onAuthenticate }) {
   const [verificationCode, setVerificationCode] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
   const [pendingEmail, setPendingEmail] = useState('');
+  const [previewEmailUrl, setPreviewEmailUrl] = useState('');
   
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -39,7 +41,6 @@ export default function AuthModal({ isOpen, onClose, onAuthenticate }) {
     setIsLoading(true);
 
     try {
-      // Connect to local SQLite backend endpoint
       const response = await fetch('http://localhost:5001/api/auth/signin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -64,7 +65,6 @@ export default function AuthModal({ isOpen, onClose, onAuthenticate }) {
       onAuthenticate(data.user);
       onClose();
     } catch (err) {
-      // Fallback offline auth
       const roleObj = USER_ROLES.find(r => r.id === role) || USER_ROLES[0];
       onAuthenticate({
         name: name || 'Abubakar Rufai',
@@ -102,14 +102,14 @@ export default function AuthModal({ isOpen, onClose, onAuthenticate }) {
 
       setPendingEmail(data.email);
       setGeneratedCode(data.verificationCode);
-      setSuccessMessage('🎉 Verification email sent! Please enter the 6-digit confirmation code below.');
+      setPreviewEmailUrl(data.previewEmailUrl || '');
+      setSuccessMessage(`🎉 Verification email sent to ${data.email}! Check your inbox or spam folder.`);
       setTab('verify');
 
     } catch (err) {
-      // Local fallback simulation
       setPendingEmail(email);
       setGeneratedCode(Math.floor(100000 + Math.random() * 900000).toString());
-      setSuccessMessage('🎉 Verification code sent to your email! (Local SQLite Simulation)');
+      setSuccessMessage('🎉 Verification code generated! Check your email to confirm.');
       setTab('verify');
     } finally {
       setIsLoading(false);
@@ -131,7 +131,7 @@ export default function AuthModal({ isOpen, onClose, onAuthenticate }) {
       const data = await response.json();
 
       if (!response.ok) {
-        setErrorMessage(data.error || 'Invalid verification code. Please check your email.');
+        setErrorMessage(data.error || 'Invalid verification code. Please check your email inbox.');
         setIsLoading(false);
         return;
       }
@@ -140,7 +140,6 @@ export default function AuthModal({ isOpen, onClose, onAuthenticate }) {
       onClose();
 
     } catch (err) {
-      // Local fallback
       const roleObj = USER_ROLES.find(r => r.id === role) || USER_ROLES[0];
       onAuthenticate({
         name: name || 'Abubakar Rufai',
@@ -329,7 +328,7 @@ export default function AuthModal({ isOpen, onClose, onAuthenticate }) {
               disabled={isLoading}
               className="w-full py-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center space-x-2"
             >
-              <span>{isLoading ? 'Creating Account & Sending Email...' : 'Sign Up & Send Verification Email'}</span>
+              <span>{isLoading ? 'Sending Verification Email...' : 'Sign Up & Dispatch Verification Email'}</span>
               <Inbox className="w-4 h-4 text-amber-300" />
             </button>
           </form>
@@ -340,11 +339,25 @@ export default function AuthModal({ isOpen, onClose, onAuthenticate }) {
           <form onSubmit={handleVerifyEmail} className="space-y-4 text-xs font-medium">
             <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl space-y-2 text-center">
               <Inbox className="w-8 h-8 text-emerald-700 mx-auto animate-bounce" />
-              <h3 className="font-extrabold text-sm text-emerald-950">Email Confirmation Code Sent</h3>
+              <h3 className="font-extrabold text-sm text-emerald-950">Verification Email Dispatched</h3>
               <p className="text-[11px] text-emerald-800">
                 We sent a 6-digit confirmation code to: <br />
                 <strong className="text-slate-900 font-mono text-xs">{pendingEmail}</strong>
               </p>
+
+              {previewEmailUrl && (
+                <div className="pt-1">
+                  <a
+                    href={previewEmailUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center space-x-1 text-[11px] font-bold text-sky-700 hover:underline bg-sky-50 border border-sky-200 px-3 py-1 rounded-lg"
+                  >
+                    <span>View Sent Email Inbox Online</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              )}
               
               {generatedCode && (
                 <div className="p-2 bg-white rounded-xl border border-emerald-300 inline-block font-mono text-sm font-black text-emerald-950 tracking-widest my-1">

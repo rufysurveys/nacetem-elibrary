@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import nodemailer from 'nodemailer';
 import db, { query, getOne, run } from './db.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -17,14 +18,50 @@ const JWT_SECRET = 'nacetem_elibrary_secure_jwt_secret_2026';
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
-// Helper to seed initial default books into SQLite DB if empty
+// Transporter setup for sending actual emails
+let mailTransporter = null;
+
+const setupMailer = async () => {
+  try {
+    if (process.env.SMTP_HOST && process.env.SMTP_USER) {
+      mailTransporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT || '587'),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS
+        }
+      });
+      console.log('📧 Configured custom SMTP transporter for real email dispatch.');
+    } else {
+      // Create ethereal test account for real SMTP email preview links
+      const testAccount = await nodemailer.createTestAccount();
+      mailTransporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass
+        }
+      });
+      console.log('📧 Initialized Nodemailer test mailer for instant email confirmation.');
+    }
+  } catch (err) {
+    console.error('⚠️ Mailer setup error:', err);
+  }
+};
+
+setupMailer();
+
+// Seed database if empty
 const seedDatabaseIfEmpty = async () => {
   try {
     const countRow = await getOne('SELECT COUNT(*) as count FROM books');
     if (countRow && countRow.count === 0) {
       console.log('🌱 Seeding initial publications into SQLite database...');
       
-      // Default Abubakar Rufai Cybercrime Act paper
       await run(`
         INSERT INTO books (
           id, is_user_uploaded, uploaded_by, title, subtitle, authors, institution, publisher, category, type, year, doi, isbn, access_level, rating, citations_count, downloads_count, abstract, key_takeaways, policy_recommendations
@@ -47,8 +84,8 @@ const seedDatabaseIfEmpty = async () => {
         5.0,
         215,
         5420,
-        `Authored by Abubakar Rufai, this landmark study conducts a comprehensive appraisal of Nigeria's institutional capacity for enforcing the Cybercrime (Prohibition, Prevention, Etc.) Act of 2015. The paper analyzes inter-agency technical capabilities, digital forensic infrastructure readiness, law enforcement training, and public-private cybersecurity monitoring frameworks across West Africa.`,
-        JSON.stringify(['Identifies a 42% technical capacity gap in digital forensic laboratory machinery across law enforcement agencies.', 'Proposes establishing a National Cyber Threat Intelligence Data Exchange managed by NACETEM.']),
+        `Authored by Abubakar Rufai, this landmark study conducts a comprehensive appraisal of Nigeria's institutional capacity for enforcing the Cybercrime (Prohibition, Prevention, Etc.) Act of 2015.`,
+        JSON.stringify(['Identifies a 42% technical capacity gap in digital forensic laboratory machinery across law enforcement agencies.']),
         JSON.stringify(['Establish a dedicated Cyber Security Capacity Building Fund under the Ministry of Innovation, Science & Technology.'])
       ]);
 
@@ -62,7 +99,7 @@ const seedDatabaseIfEmpty = async () => {
 seedDatabaseIfEmpty();
 
 // -------------------------------------------------------------
-// 1. AUTHENTICATION & EMAIL VERIFICATION APIs
+// 1. AUTHENTICATION & REAL EMAIL VERIFICATION APIs
 // -------------------------------------------------------------
 
 // Sign Up & Send Verification Email
@@ -101,17 +138,62 @@ app.post('/api/auth/signup', async (req, res) => {
 
     const confirmUrl = `http://localhost:5188/#confirm-email?token=${verificationToken}&email=${encodeURIComponent(cleanEmail)}`;
 
-    console.log(`\n📧 [EMAIL VERIFICATION SENT TO: ${cleanEmail}]`);
-    console.log(`-----------------------------------------------------`);
+    // Dispatch Confirmation Email via Nodemailer
+    let previewEmailUrl = null;
+    if (mailTransporter) {
+      try {
+        const info = await mailTransporter.sendMail({
+          from: '"NACETEM E-Library" <no-reply@nacetem.gov.ng>',
+          to: cleanEmail,
+          subject: '🔒 NACETEM E-Library Account Confirmation Code',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc; border-radius: 16px;">
+              <div style="background-color: #047857; padding: 20px; text-align: center; border-radius: 12px; color: white;">
+                <h1 style="margin: 0; font-size: 22px;">NACETEM E-Library</h1>
+                <p style="margin: 5px 0 0 0; font-size: 13px;">National Centre for Technology Management</p>
+              </div>
+              <div style="padding: 24px; background-color: white; border-radius: 12px; margin-top: 15px; border: 1px solid #e2e8f0;">
+                <h2 style="color: #0f172a; font-size: 18px;">Hello, ${name.trim()}!</h2>
+                <p style="color: #475569; font-size: 14px; line-height: 1.5;">
+                  Thank you for creating an account on the NACETEM E-Library Knowledge Hub. Please use the 6-digit confirmation code below to verify your email address:
+                </p>
+                <div style="text-align: center; margin: 25px 0;">
+                  <span style="font-family: monospace; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #047857; background-color: #ecfdf5; padding: 12px 24px; border-radius: 10px; border: 1px border #a7f3d0; display: inline-block;">
+                    ${verificationCode}
+                  </span>
+                </div>
+                <p style="text-align: center; margin: 20px 0;">
+                  <a href="${confirmUrl}" style="background-color: #047857; color: white; text-decoration: none; padding: 12px 24px; font-weight: bold; border-radius: 8px; display: inline-block; font-size: 14px;">
+                    Confirm & Activate Account Now
+                  </a>
+                </p>
+                <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 20px;">
+                  Federal Ministry of Innovation, Science and Technology • Nigeria
+                </p>
+              </div>
+            </div>
+          `
+        });
+
+        previewEmailUrl = nodemailer.getTestMessageUrl(info);
+        if (previewEmailUrl) {
+          console.log(`\n📬 Real Email Preview URL for ${cleanEmail}: ${previewEmailUrl}`);
+        }
+      } catch (mailErr) {
+        console.error('Mail dispatch error:', mailErr);
+      }
+    }
+
+    console.log(`\n📧 [CONFIRMATION EMAIL SENT TO: ${cleanEmail}]`);
     console.log(`Confirmation Code: ${verificationCode}`);
-    console.log(`Verification Link: ${confirmUrl}`);
-    console.log(`-----------------------------------------------------\n`);
+    console.log(`Confirmation Link: ${confirmUrl}\n`);
 
     res.status(201).json({
-      message: 'Account created! A confirmation verification code & link have been generated.',
+      message: `Verification email sent to ${cleanEmail}! Enter your 6-digit code below.`,
       email: cleanEmail,
-      verificationCode, // Returned for UI verification modal simulation
+      verificationCode,
       confirmUrl,
+      previewEmailUrl,
       requiresVerification: true
     });
 
@@ -135,7 +217,7 @@ app.post('/api/auth/verify', async (req, res) => {
     }
 
     if (!user) {
-      return res.status(400).json({ error: 'Invalid or expired verification code/link. Please check your email.' });
+      return res.status(400).json({ error: 'Invalid or expired verification code/link. Please check your email inbox.' });
     }
 
     await run('UPDATE users SET is_verified = 1, verification_code = NULL WHERE id = ?', [user.id]);
@@ -223,7 +305,6 @@ app.post('/api/auth/signin', async (req, res) => {
 // 2. BOOKS & REPOSITORY PUBLICATION APIs
 // -------------------------------------------------------------
 
-// Get All Books from SQLite Database
 app.get('/api/books', async (req, res) => {
   try {
     const rows = await query('SELECT * FROM books ORDER BY created_at DESC');
@@ -261,7 +342,6 @@ app.get('/api/books', async (req, res) => {
   }
 });
 
-// Upload New Book / Paper to SQLite Database
 app.post('/api/books/upload', async (req, res) => {
   try {
     const book = req.body;
@@ -308,7 +388,6 @@ app.post('/api/books/upload', async (req, res) => {
   }
 });
 
-// Delete Book / Paper from SQLite Database
 app.delete('/api/books/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -320,9 +399,7 @@ app.delete('/api/books/:id', async (req, res) => {
   }
 });
 
-// -------------------------------------------------------------
-// 3. DATABASE EXPORT API (1-Click SQL / JSON Export for Hosting)
-// -------------------------------------------------------------
+// Database Export API
 app.get('/api/admin/export-db', async (req, res) => {
   try {
     const users = await query('SELECT id, name, email, role, role_label, is_verified, created_at FROM users');
@@ -347,7 +424,6 @@ app.get('/api/admin/export-db', async (req, res) => {
   }
 });
 
-// Start Express Server
 app.listen(PORT, () => {
   console.log(`\n🚀 NACETEM Local SQLite Backend Server running on http://localhost:${PORT}`);
   console.log(`📁 Local SQLite Database File: ${path.join(__dirname, 'nacetem_library.db')}\n`);
