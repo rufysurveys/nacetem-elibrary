@@ -2,14 +2,13 @@ import React, { useState } from 'react';
 import { 
   BookOpen, 
   UploadCloud, 
-  Bookmark, 
   FileCheck, 
   GraduationCap, 
   ChevronDown, 
   User, 
   ShieldCheck, 
   LogOut,
-  CheckCircle
+  LogIn
 } from 'lucide-react';
 import { USER_ROLES } from '../data/mockLibraryData';
 
@@ -44,6 +43,8 @@ export default function Header({
     setShowRoleDropdown(false);
     onLogout();
   };
+
+  const isAuthenticated = currentUser?.isAuthenticated;
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs transition-all">
@@ -188,66 +189,70 @@ export default function Header({
             <span className="hidden sm:inline">Upload Document</span>
           </button>
 
-          {/* User Persona & Role Selector */}
-          <div className="relative">
-            <button
-              onClick={() => setShowRoleDropdown(!showRoleDropdown)}
-              className="p-2 md:px-3.5 md:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 font-extrabold text-xs flex items-center space-x-2 transition-all"
-            >
-              <User className="w-4 h-4 text-emerald-700" />
-              <span className="hidden md:inline line-clamp-1 max-w-[120px]">{currentUser?.name || 'Abubakar Rufai'}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
-            </button>
-
-            {showRoleDropdown && (
-              <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 text-xs font-medium animate-in fade-in">
-                <div className="px-3.5 py-2 border-b border-slate-100">
-                  <p className="font-extrabold text-slate-900">{currentUser?.name || 'Abubakar Rufai'}</p>
-                  <p className="text-[11px] text-slate-500 font-semibold">{currentUser?.email || 'abubakar.rufai@nacetem.gov.ng'}</p>
+          {/* Account Authentication & User Profile Button */}
+          {isAuthenticated ? (
+            <div className="relative">
+              <button
+                onClick={() => setShowRoleDropdown(!showRoleDropdown)}
+                className="p-2 md:px-3.5 md:py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-950 font-extrabold text-xs flex items-center space-x-2 transition-all shadow-xs"
+              >
+                <div className="w-6 h-6 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-xs">
+                  {currentUser.name ? currentUser.name.charAt(0) : 'U'}
                 </div>
+                <span className="hidden md:inline line-clamp-1 max-w-[120px]">{currentUser.name}</span>
+                <ChevronDown className="w-3.5 h-3.5 text-emerald-700" />
+              </button>
 
-                <div className="py-1">
-                  <p className="px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Switch Active Persona:</p>
-                  {USER_ROLES.map(role => (
+              {showRoleDropdown && (
+                <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 text-xs font-medium animate-in fade-in">
+                  <div className="px-3.5 py-2 border-b border-slate-100 bg-slate-50">
+                    <p className="font-extrabold text-slate-900">{currentUser.name}</p>
+                    <p className="text-[11px] text-slate-500 font-semibold">{currentUser.email || 'abubakar.rufai@nacetem.gov.ng'}</p>
+                    <span className="inline-block mt-1 bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase">
+                      {currentUser.roleLabel || 'NACETEM Researcher'}
+                    </span>
+                  </div>
+
+                  <div className="py-1">
+                    <p className="px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Switch Active Persona:</p>
+                    {USER_ROLES.map(role => (
+                      <button
+                        key={role.id}
+                        onClick={() => {
+                          setCurrentRole(role.id);
+                          setShowRoleDropdown(false);
+                        }}
+                        className={`w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center justify-between ${
+                          currentRole === role.id ? 'font-bold text-emerald-800 bg-emerald-50' : 'text-slate-700'
+                        }`}
+                      >
+                        <span>{role.label}</span>
+                        {currentRole === role.id && <span className="text-emerald-700 font-bold">✓</span>}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="border-t border-slate-100 pt-1">
                     <button
-                      key={role.id}
-                      onClick={() => {
-                        setCurrentRole(role.id);
-                        setShowRoleDropdown(false);
-                      }}
-                      className={`w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center justify-between ${
-                        currentRole === role.id ? 'font-bold text-emerald-800 bg-emerald-50' : 'text-slate-700'
-                      }`}
+                      onClick={handleSignOut}
+                      className="w-full px-3.5 py-2 text-left text-red-600 hover:bg-red-50 font-extrabold flex items-center space-x-2"
                     >
-                      <span>{role.label}</span>
-                      {currentRole === role.id && <span className="text-emerald-700 font-bold">✓</span>}
+                      <LogOut className="w-4 h-4 text-red-600" />
+                      <span>Sign Out / Logout</span>
                     </button>
-                  ))}
+                  </div>
                 </div>
-
-                <div className="border-t border-slate-100 pt-1 space-y-1">
-                  <button
-                    onClick={() => {
-                      setShowRoleDropdown(false);
-                      onOpenAuth();
-                    }}
-                    className="w-full px-3.5 py-2 text-left text-slate-700 hover:bg-slate-50 font-bold"
-                  >
-                    Switch Account / Sign In
-                  </button>
-
-                  {/* Explicit Red Sign Out Button */}
-                  <button
-                    onClick={handleSignOut}
-                    className="w-full px-3.5 py-2 text-left text-red-600 hover:bg-red-50 font-bold flex items-center space-x-2 border-t border-slate-100 pt-2"
-                  >
-                    <LogOut className="w-4 h-4 text-red-600" />
-                    <span>Sign Out / Logout</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={onOpenAuth}
+              className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs flex items-center space-x-1.5 shadow-md transition-all hover:scale-105"
+            >
+              <LogIn className="w-4 h-4 text-emerald-400" />
+              <span>Sign In / Register</span>
+            </button>
+          )}
         </div>
       </div>
     </header>

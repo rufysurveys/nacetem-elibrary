@@ -31,7 +31,6 @@ export default function App() {
   const [books, setBooks] = useState(() => {
     const userUploads = getStoredUserUploads();
     
-    // De-duplicate user uploads against INITIAL_BOOKS by id
     const mergedMap = new Map();
     userUploads.forEach(b => mergedMap.set(b.id, { ...b, isUserUploaded: true }));
     INITIAL_BOOKS.forEach(b => {
@@ -40,7 +39,6 @@ export default function App() {
 
     const combinedList = Array.from(mergedMap.values());
 
-    // Sanitize any username strings like 'rufysanctuary'
     return combinedList.map(book => {
       let updated = { ...book };
       if (Array.isArray(updated.authors)) {
@@ -77,16 +75,18 @@ export default function App() {
     const saved = localStorage.getItem('nacetem_current_user');
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (parsed.name && parsed.name.toLowerCase().includes('rufysanctuary')) {
-        parsed.name = 'Abubakar Rufai';
+      if (parsed && parsed.name) {
+        if (parsed.name.toLowerCase().includes('rufysanctuary')) {
+          parsed.name = 'Abubakar Rufai';
+        }
+        return parsed;
       }
-      return parsed;
     }
-    return { isAuthenticated: true, name: 'Abubakar Rufai', role: 'admin', roleLabel: 'Head Librarian (Admin)' };
+    return { isAuthenticated: true, name: 'Abubakar Rufai', email: 'abubakar.rufai@nacetem.gov.ng', role: 'admin', roleLabel: 'Head Librarian (Admin)' };
   });
 
   // Role persona
-  const [currentRole, setCurrentRole] = useState(currentUser.role || 'admin');
+  const [currentRole, setCurrentRole] = useState(currentUser?.role || 'admin');
 
   // Active Navigation View
   const [activeTab, setActiveTab] = useState('catalog');
@@ -112,7 +112,11 @@ export default function App() {
   }, [userState]);
 
   useEffect(() => {
-    localStorage.setItem('nacetem_current_user', JSON.stringify(currentUser));
+    if (currentUser && currentUser.isAuthenticated) {
+      localStorage.setItem('nacetem_current_user', JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem('nacetem_current_user');
+    }
   }, [currentUser]);
 
   const showToast = (message) => {
@@ -126,17 +130,21 @@ export default function App() {
       cleanName = 'Abubakar Rufai';
     }
 
-    const updatedProfile = { ...profile, name: cleanName };
+    const updatedProfile = { ...profile, name: cleanName, isAuthenticated: true };
     setCurrentUser(updatedProfile);
-    setCurrentRole(updatedProfile.role);
-    showToast(`Welcome back, ${updatedProfile.name}! Signed in as ${updatedProfile.roleLabel}.`);
+    setCurrentRole(updatedProfile.role || 'staff');
+    localStorage.setItem('nacetem_current_user', JSON.stringify(updatedProfile));
+    showToast(`Welcome back, ${updatedProfile.name}! Signed in successfully.`);
     confetti({ particleCount: 40, spread: 60, origin: { y: 0.7 } });
   };
 
   const handleLogout = () => {
-    setCurrentUser({ isAuthenticated: false, name: '', role: 'other' });
+    const unauthObj = { isAuthenticated: false, name: '', email: '', role: 'other', roleLabel: 'Visitor' };
+    setCurrentUser(unauthObj);
     setCurrentRole('other');
-    showToast('Signed out of NACETEM E-Library.');
+    localStorage.removeItem('nacetem_current_user');
+    localStorage.removeItem('nacetem_auth_token');
+    showToast('Successfully signed out of NACETEM E-Library.');
   };
 
   const handleSelectLectureSeries = (seriesName) => {
@@ -241,7 +249,6 @@ export default function App() {
     showToast('Deleted note.');
   };
 
-  // Permanently save uploaded paper so it CAN NEVER DISAPPEAR
   const handleUploadBook = (newBook) => {
     const taggedBook = { ...newBook, isUserUploaded: true, uploadedBy: currentUser?.name || 'Abubakar Rufai' };
     
@@ -316,7 +323,7 @@ export default function App() {
       <main className="flex-1">
         {activeTab === 'catalog' && (
           <div className="space-y-8 pb-16">
-            {/* Official Welcome Message Banner from Director-General Dr. Olushola Odusanya (Top of Page) */}
+            {/* Official Welcome Message Banner from Director-General Dr. Olushola Odusanya */}
             <DgWelcomeBanner />
 
             {/* Hero Search Section */}
