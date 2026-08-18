@@ -16,55 +16,53 @@ import { BookOpen } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function App() {
-  // Books state merged & sanitized to ensure accurate author names and years
-  const [books, setBooks] = useState(() => {
-    const saved = localStorage.getItem('nacetem_books_v6');
-    let baseBooks = INITIAL_BOOKS;
-
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        const mergedMap = new Map();
-        // User uploads take top priority
-        parsed.forEach(b => mergedMap.set(b.id, b));
-        INITIAL_BOOKS.forEach(b => {
-          if (!mergedMap.has(b.id)) mergedMap.set(b.id, b);
-        });
-        baseBooks = Array.from(mergedMap.values());
-      } catch (e) {
-        baseBooks = INITIAL_BOOKS;
-      }
+  // Helper to load user uploaded papers from permanent localStorage key
+  const getStoredUserUploads = () => {
+    try {
+      const saved = localStorage.getItem('nacetem_user_uploaded_papers');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
     }
+  };
 
-    // Auto-Sanitize all saved books to fix any username strings like 'rufysanctuary' or incorrect years
-    const sanitizedBooks = baseBooks.map(book => {
-      let updatedBook = { ...book };
-
-      if (Array.isArray(updatedBook.authors)) {
-        updatedBook.authors = updatedBook.authors.map(a => 
-          a.toLowerCase().includes('rufysanctuary') ? 'Abubakar Rufai' : a
-        );
-      } else if (typeof updatedBook.authors === 'string' && updatedBook.authors.toLowerCase().includes('rufysanctuary')) {
-        updatedBook.authors = ['Abubakar Rufai'];
-      }
-
-      if (updatedBook.institution && updatedBook.institution.toLowerCase().includes('rufysanctuary')) {
-        updatedBook.institution = 'National Centre for Technology Management (NACETEM)';
-      }
-
-      if (updatedBook.title && updatedBook.title.toLowerCase().includes('cybercrime act')) {
-        updatedBook.authors = ['Abubakar Rufai', 'Dr. Kazeem Abubakar'];
-        updatedBook.year = 2015;
-        updatedBook.institution = 'National Centre for Technology Management (NACETEM)';
-        updatedBook.doi = '10.5281/nacetem.2015.001';
-        updatedBook.isUserUploaded = true;
-      }
-
-      return updatedBook;
+  // Books state: merges permanent user uploaded papers at the very top of INITIAL_BOOKS
+  const [books, setBooks] = useState(() => {
+    const userUploads = getStoredUserUploads();
+    
+    // De-duplicate user uploads against INITIAL_BOOKS by id
+    const mergedMap = new Map();
+    userUploads.forEach(b => mergedMap.set(b.id, { ...b, isUserUploaded: true }));
+    INITIAL_BOOKS.forEach(b => {
+      if (!mergedMap.has(b.id)) mergedMap.set(b.id, b);
     });
 
-    localStorage.setItem('nacetem_books_v6', JSON.stringify(sanitizedBooks));
-    return sanitizedBooks;
+    const combinedList = Array.from(mergedMap.values());
+
+    // Sanitize any username strings like 'rufysanctuary'
+    return combinedList.map(book => {
+      let updated = { ...book };
+      if (Array.isArray(updated.authors)) {
+        updated.authors = updated.authors.map(a => 
+          a.toLowerCase().includes('rufysanctuary') ? 'Abubakar Rufai' : a
+        );
+      } else if (typeof updated.authors === 'string' && updated.authors.toLowerCase().includes('rufysanctuary')) {
+        updated.authors = ['Abubakar Rufai'];
+      }
+
+      if (updated.institution && updated.institution.toLowerCase().includes('rufysanctuary')) {
+        updated.institution = 'National Centre for Technology Management (NACETEM)';
+      }
+
+      if (updated.title && updated.title.toLowerCase().includes('cybercrime act')) {
+        updated.authors = ['Abubakar Rufai', 'Dr. Kazeem Abubakar'];
+        updated.year = 2015;
+        updated.institution = 'National Centre for Technology Management (NACETEM)';
+        updated.doi = '10.5281/nacetem.2015.001';
+        updated.isUserUploaded = true;
+      }
+      return updated;
+    });
   });
 
   // User state
@@ -107,10 +105,6 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedType, setSelectedType] = useState('All Types');
   const [openAccessOnly, setOpenAccessOnly] = useState(false);
-
-  useEffect(() => {
-    localStorage.setItem('nacetem_books_v6', JSON.stringify(books));
-  }, [books]);
 
   useEffect(() => {
     localStorage.setItem('nacetem_user_state', JSON.stringify(userState));
@@ -235,22 +229,32 @@ export default function App() {
     showToast('Deleted note.');
   };
 
+  // Permanently save uploaded paper so it CAN NEVER DISAPPEAR
   const handleUploadBook = (newBook) => {
-    // Explicitly tag and prepend new uploaded book to books array
     const taggedBook = { ...newBook, isUserUploaded: true, uploadedBy: currentUser?.name || 'Abubakar Rufai' };
+    
+    // Save to permanent dedicated user uploads key in localStorage
+    const currentUploads = getStoredUserUploads();
+    const updatedUploads = [taggedBook, ...currentUploads];
+    localStorage.setItem('nacetem_user_uploaded_papers', JSON.stringify(updatedUploads));
+
+    // Update state immediately
     const updatedBooks = [taggedBook, ...books];
     setBooks(updatedBooks);
-    localStorage.setItem('nacetem_books_v6', JSON.stringify(updatedBooks));
     
-    showToast('🚀 Priority Paper archived & added to top of your Dashboard!');
+    showToast('🚀 Priority Paper archived & saved permanently to your Dashboard!');
     confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
     setActiveTab('dashboard'); // Switch immediately to dashboard view
   };
 
   const handleDeleteBook = (bookId) => {
+    // Delete from permanent user uploads key
+    const currentUploads = getStoredUserUploads().filter(b => b.id !== bookId);
+    localStorage.setItem('nacetem_user_uploaded_papers', JSON.stringify(currentUploads));
+
+    // Update state
     const updatedBooks = books.filter(b => b.id !== bookId);
     setBooks(updatedBooks);
-    localStorage.setItem('nacetem_books_v6', JSON.stringify(updatedBooks));
     showToast('Publication deleted from repository.');
   };
 
