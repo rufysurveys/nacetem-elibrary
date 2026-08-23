@@ -32,6 +32,7 @@ db.serialize(() => {
       is_verified INTEGER DEFAULT 0,
       verification_code TEXT,
       verification_token TEXT,
+      verification_expires_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -42,6 +43,7 @@ db.serialize(() => {
       id TEXT PRIMARY KEY,
       is_user_uploaded INTEGER DEFAULT 0,
       uploaded_by TEXT,
+      uploaded_by_user_id TEXT,
       title TEXT NOT NULL,
       subtitle TEXT,
       authors TEXT NOT NULL,
@@ -62,9 +64,37 @@ db.serialize(() => {
       policy_recommendations TEXT,
       full_text TEXT,
       pdf_data_url TEXT,
+      file_name TEXT,
+      file_path TEXT,
+      mime_type TEXT,
+      file_size INTEGER,
+      file_checksum TEXT,
+      volume TEXT,
+      issue TEXT,
+      pages TEXT,
+      chapters TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  const migrations = [
+    ['file_name', 'TEXT'], ['file_path', 'TEXT'], ['mime_type', 'TEXT'],
+    ['file_size', 'INTEGER'], ['file_checksum', 'TEXT'], ['volume', 'TEXT'],
+    ['issue', 'TEXT'], ['pages', 'TEXT'], ['chapters', 'TEXT'],
+    ['uploaded_by_user_id', 'TEXT']
+  ];
+  migrations.forEach(([column, type]) => {
+    db.run(`ALTER TABLE books ADD COLUMN ${column} ${type}`, (error) => {
+      if (error && !error.message.includes('duplicate column name')) {
+        console.error(`Migration failed for books.${column}:`, error.message);
+      }
+    });
+  });
+  db.run('ALTER TABLE users ADD COLUMN verification_expires_at DATETIME', (error) => {
+    if (error && !error.message.includes('duplicate column name')) {
+      console.error('Migration failed for users.verification_expires_at:', error.message);
+    }
+  });
 });
 
 // Helper database wrapper functions

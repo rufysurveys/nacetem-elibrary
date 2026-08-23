@@ -6,27 +6,23 @@ import {
   User, 
   CheckCircle, 
   ArrowRight, 
-  ShieldCheck, 
-  Sparkles,
   KeyRound,
   Inbox,
   AlertCircle,
   ExternalLink
 } from 'lucide-react';
-import { USER_ROLES } from '../data/mockLibraryData';
 
 export default function AuthModal({ isOpen, onClose, onAuthenticate }) {
   const [tab, setTab] = useState('signin'); // 'signin', 'signup', 'verify'
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('staff');
   
   // Verification State
   const [verificationCode, setVerificationCode] = useState('');
-  const [generatedCode, setGeneratedCode] = useState('');
   const [pendingEmail, setPendingEmail] = useState('');
   const [previewEmailUrl, setPreviewEmailUrl] = useState('');
+  const [developmentCode, setDevelopmentCode] = useState('');
   
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -52,7 +48,6 @@ export default function AuthModal({ isOpen, onClose, onAuthenticate }) {
       if (!response.ok) {
         if (data.requiresVerification) {
           setPendingEmail(data.email || email);
-          setGeneratedCode(data.verificationCode || '');
           setTab('verify');
           setErrorMessage('Your email requires confirmation before signing in. Check your inbox for the code below.');
         } else {
@@ -62,18 +57,11 @@ export default function AuthModal({ isOpen, onClose, onAuthenticate }) {
         return;
       }
 
+      localStorage.setItem('nacetem_auth_token', data.token);
       onAuthenticate(data.user);
       onClose();
-    } catch (err) {
-      const roleObj = USER_ROLES.find(r => r.id === role) || USER_ROLES[0];
-      onAuthenticate({
-        name: name || 'Abubakar Rufai',
-        email: email || 'abubakar.rufai@nacetem.gov.ng',
-        role,
-        roleLabel: roleObj.label,
-        isVerified: true
-      });
-      onClose();
+    } catch {
+      setErrorMessage('Unable to reach the authentication server. Please try again shortly.');
     } finally {
       setIsLoading(false);
     }
@@ -89,7 +77,7 @@ export default function AuthModal({ isOpen, onClose, onAuthenticate }) {
       const response = await fetch('http://localhost:5001/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, role })
+        body: JSON.stringify({ name, email, password })
       });
 
       const data = await response.json();
@@ -101,16 +89,35 @@ export default function AuthModal({ isOpen, onClose, onAuthenticate }) {
       }
 
       setPendingEmail(data.email);
-      setGeneratedCode(data.verificationCode);
       setPreviewEmailUrl(data.previewEmailUrl || '');
-      setSuccessMessage(`🎉 Verification email sent to ${data.email}! Check your inbox or spam folder.`);
+      setDevelopmentCode(data.developmentCode || '');
+      setSuccessMessage(data.message);
       setTab('verify');
 
-    } catch (err) {
-      setPendingEmail(email);
-      setGeneratedCode(Math.floor(100000 + Math.random() * 900000).toString());
-      setSuccessMessage('🎉 Verification code generated! Check your email to confirm.');
-      setTab('verify');
+    } catch {
+      setErrorMessage('Unable to reach the registration server. Your account was not created.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setErrorMessage('');
+    setSuccessMessage('');
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: pendingEmail || email })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'A new code could not be sent.');
+      setDevelopmentCode(data.developmentCode || '');
+      setVerificationCode('');
+      setSuccessMessage(data.message);
+    } catch (error) {
+      setErrorMessage(error.message);
     } finally {
       setIsLoading(false);
     }
@@ -136,19 +143,12 @@ export default function AuthModal({ isOpen, onClose, onAuthenticate }) {
         return;
       }
 
+      localStorage.setItem('nacetem_auth_token', data.token);
       onAuthenticate(data.user);
       onClose();
 
-    } catch (err) {
-      const roleObj = USER_ROLES.find(r => r.id === role) || USER_ROLES[0];
-      onAuthenticate({
-        name: name || 'Abubakar Rufai',
-        email: pendingEmail || 'abubakar.rufai@nacetem.gov.ng',
-        role,
-        roleLabel: roleObj.label,
-        isVerified: true
-      });
-      onClose();
+    } catch {
+      setErrorMessage('Unable to reach the verification server. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -310,19 +310,6 @@ export default function AuthModal({ isOpen, onClose, onAuthenticate }) {
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-slate-800 font-bold">Select Role Persona</label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-900 font-semibold focus:outline-none focus:border-emerald-600"
-              >
-                {USER_ROLES.map(r => (
-                  <option key={r.id} value={r.id}>{r.label} ({r.badge})</option>
-                ))}
-              </select>
-            </div>
-
             <button
               type="submit"
               disabled={isLoading}
@@ -358,12 +345,13 @@ export default function AuthModal({ isOpen, onClose, onAuthenticate }) {
                   </a>
                 </div>
               )}
-              
-              {generatedCode && (
-                <div className="p-2 bg-white rounded-xl border border-emerald-300 inline-block font-mono text-sm font-black text-emerald-950 tracking-widest my-1">
-                  Code: {generatedCode}
+              {developmentCode && (
+                <div className="mt-3 p-3 bg-amber-50 border border-amber-300 rounded-lg text-amber-900">
+                  <span className="block text-[10px] font-bold uppercase">Development only code</span>
+                  <strong className="font-mono text-lg tracking-widest">{developmentCode}</strong>
                 </div>
               )}
+              
             </div>
 
             <div className="space-y-1">
@@ -382,22 +370,16 @@ export default function AuthModal({ isOpen, onClose, onAuthenticate }) {
               />
             </div>
 
-            <div className="flex items-center space-x-2">
-              <button
-                type="button"
-                onClick={() => setVerificationCode(generatedCode)}
-                className="w-1/2 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[11px] flex items-center justify-center space-x-1"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                <span>Auto-Fill Code</span>
-              </button>
-
+            <div>
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-1/2 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-md transition-all"
+                className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-md transition-all"
               >
                 {isLoading ? 'Verifying...' : 'Confirm & Sign In'}
+              </button>
+              <button type="button" onClick={handleResendCode} disabled={isLoading} className="w-full mt-2 py-2 text-emerald-800 font-bold hover:underline disabled:opacity-50">
+                Send a new verification code
               </button>
             </div>
           </form>

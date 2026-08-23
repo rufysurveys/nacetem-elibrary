@@ -17,7 +17,7 @@ import {
   Plus,
   AlertCircle
 } from 'lucide-react';
-import { exportToPdf, exportToWord } from '../utils/documentExporter';
+import { exportToPdf } from '../utils/documentExporter';
 import { generateAcademicCitation } from '../utils/citationFormatter';
 
 export default function PersonalDashboard({
@@ -37,21 +37,14 @@ export default function PersonalDashboard({
   const [copiedSharePortfolio, setCopiedSharePortfolio] = useState(false);
   const [showPortfolioReportModal, setShowPortfolioReportModal] = useState(false);
 
-  const userName = currentUser?.name || 'Abubakar Rufai';
+  const userName = currentUser?.name || 'Reader';
 
-  // Filter ALL user-uploaded and custom papers unconditionally
-  const myPapers = allBooks.filter(book => {
-    if (book.isUserUploaded) return true;
-    if (book.id && (book.id.startsWith('user-paper') || book.id.includes('user') || book.id.includes('rufai'))) return true;
-    
-    const authorStr = Array.isArray(book.authors) ? book.authors.join(' ') : (book.authors || '');
-    return (
-      authorStr.toLowerCase().includes(userName.toLowerCase()) ||
-      authorStr.toLowerCase().includes('abubakar') ||
-      authorStr.toLowerCase().includes('rufai') ||
-      (book.title && book.title.toLowerCase().includes('cybercrime act'))
-    );
-  });
+  const myPapers = allBooks
+    .filter((book) => book.isUserUploaded && (
+      book.uploadedByUserId === currentUser?.id ||
+      (!book.uploadedByUserId && book.uploadedBy?.toLowerCase() === userName.toLowerCase())
+    ))
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
   const borrowedList = userState.borrowedBooks.map(item => {
     const book = allBooks.find(b => b.id === item.bookId);
@@ -252,15 +245,7 @@ export default function PersonalDashboard({
                       className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-xs flex items-center space-x-1"
                     >
                       <Download className="w-3 h-3" />
-                      <span>PDF</span>
-                    </button>
-
-                    <button
-                      onClick={() => exportToWord(paper)}
-                      className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold text-xs flex items-center space-x-1"
-                    >
-                      <Download className="w-3 h-3" />
-                      <span>Word</span>
+                      <span>Original PDF</span>
                     </button>
                   </div>
                 </div>

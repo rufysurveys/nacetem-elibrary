@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   ShieldCheck, 
   Trash2, 
@@ -9,11 +9,42 @@ import {
   Check, 
   Search,
   FileCheck,
-  FileText
+  FileText,
+  Users,
+  UserX
 } from 'lucide-react';
 
 export default function LibrarianAdmin({ books, onDeleteBook, onToggleAccessLevel, onToggleFeatured }) {
   const [adminSearch, setAdminSearch] = useState('');
+  const [users, setUsers] = useState([]);
+  const [usersError, setUsersError] = useState('');
+
+  const loadUsers = async () => {
+    const token = localStorage.getItem('nacetem_auth_token');
+    const response = await fetch('/api/admin/users', { headers: { Authorization: `Bearer ${token}` } });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Could not load accounts.');
+    setUsers(data);
+  };
+
+  useEffect(() => {
+    loadUsers().catch((error) => setUsersError(error.message));
+  }, []);
+
+  const handleDeleteUser = async (user) => {
+    if (!window.confirm(`Delete ${user.name}'s account and all documents they deposited?`)) return;
+    const token = localStorage.getItem('nacetem_auth_token');
+    const response = await fetch(`/api/admin/users/${encodeURIComponent(user.id)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      setUsersError(data.error || 'Account could not be removed.');
+      return;
+    }
+    setUsers((current) => current.filter((item) => item.id !== user.id));
+  };
 
   const filteredBooks = books.filter(b => 
     b.title.toLowerCase().includes(adminSearch.toLowerCase()) ||
@@ -23,7 +54,8 @@ export default function LibrarianAdmin({ books, onDeleteBook, onToggleAccessLeve
   // 1-Click Database Export to downloadable JSON/SQL file
   const handleExportDatabase = async () => {
     try {
-      const response = await fetch('http://localhost:5001/api/admin/export-db');
+      const token = localStorage.getItem('nacetem_auth_token');
+      const response = await fetch('/api/admin/export-db', { headers: { Authorization: `Bearer ${token}` } });
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -79,6 +111,30 @@ export default function LibrarianAdmin({ books, onDeleteBook, onToggleAccessLeve
           <span>Export Local Database (.JSON / .SQL)</span>
         </button>
       </div>
+
+      <section className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+        <div className="p-5 border-b border-slate-200 flex items-center justify-between">
+          <div>
+            <h2 className="font-extrabold text-lg text-slate-900 flex items-center gap-2"><Users className="w-5 h-5 text-emerald-700" /> User accounts</h2>
+            <p className="text-xs text-slate-500 mt-1">Only verified administrators can remove accounts.</p>
+          </div>
+          <span className="text-xs font-bold text-slate-500">{users.length} accounts</span>
+        </div>
+        {usersError && <p className="m-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">{usersError}</p>}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead><tr className="bg-slate-50 text-[10px] uppercase text-slate-500"><th className="p-4">Account</th><th className="p-4">Role</th><th className="p-4">Status</th><th className="p-4 text-right">Action</th></tr></thead>
+            <tbody className="divide-y divide-slate-100">
+              {users.map((user) => <tr key={user.id}>
+                <td className="p-4"><strong className="block text-slate-900">{user.name}</strong><span className="text-slate-500">{user.email}</span></td>
+                <td className="p-4">{user.roleLabel || user.role}</td>
+                <td className="p-4"><span className={user.isVerified ? 'text-emerald-700 font-bold' : 'text-amber-700 font-bold'}>{user.isVerified ? 'Verified' : 'Pending verification'}</span></td>
+                <td className="p-4 text-right"><button onClick={() => handleDeleteUser(user)} disabled={user.role === 'admin'} title={user.role === 'admin' ? 'Admin accounts cannot be removed here' : 'Delete account'} className="p-2 rounded-lg border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed"><UserX className="w-4 h-4" /></button></td>
+              </tr>)}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       {/* Admin Search Bar */}
       <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200">

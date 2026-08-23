@@ -10,11 +10,9 @@ import {
   LogOut,
   LogIn
 } from 'lucide-react';
-import { USER_ROLES } from '../data/mockLibraryData';
 
 export default function Header({
   currentRole,
-  setCurrentRole,
   onOpenDashboard,
   onOpenUpload,
   onOpenAdmin,
@@ -27,6 +25,7 @@ export default function Header({
   borrowedCount,
   savedCount,
   onSelectLectureSeries
+  ,onOpenCatalog
 }) {
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [showLectureDropdown, setShowLectureDropdown] = useState(false);
@@ -51,7 +50,7 @@ export default function Header({
       <div className="container mx-auto px-4 max-w-7xl h-20 flex items-center justify-between gap-4">
         {/* Left: NACETEM Official Branding */}
         <div 
-          onClick={() => setActiveTab('catalog')}
+          onClick={onOpenCatalog}
           className="flex items-center space-x-3 cursor-pointer group"
         >
           <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-700 to-teal-900 flex items-center justify-center text-white font-black text-xl shadow-md border-2 border-emerald-100 group-hover:scale-105 transition-transform">
@@ -75,7 +74,7 @@ export default function Header({
         {/* Center Navigation Links */}
         <nav className="hidden lg:flex items-center space-x-1 text-xs font-extrabold">
           <button
-            onClick={() => setActiveTab('catalog')}
+            onClick={onOpenCatalog}
             className={`px-3.5 py-2 rounded-xl transition-all flex items-center space-x-1.5 ${
               activeTab === 'catalog'
                 ? 'bg-emerald-50 text-emerald-900 border border-emerald-300'
@@ -211,25 +210,6 @@ export default function Header({
                     <span className="inline-block mt-1 bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase">
                       {currentUser.roleLabel || 'NACETEM Researcher'}
                     </span>
-                  </div>
-
-                  <div className="py-1">
-                    <p className="px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Switch Active Persona:</p>
-                    {USER_ROLES.map(role => (
-                      <button
-                        key={role.id}
-                        onClick={() => {
-                          setCurrentRole(role.id);
-                          setShowRoleDropdown(false);
-                        }}
-                        className={`w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center justify-between ${
-                          currentRole === role.id ? 'font-bold text-emerald-800 bg-emerald-50' : 'text-slate-700'
-                        }`}
-                      >
-                        <span>{role.label}</span>
-                        {currentRole === role.id && <span className="text-emerald-700 font-bold">✓</span>}
-                      </button>
-                    ))}
                   </div>
 
                   <div className="border-t border-slate-100 pt-1">

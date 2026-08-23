@@ -36,7 +36,8 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
   
   // Real File Upload State
   const [uploadedFile, setUploadedFile] = useState(null);
-  const [uploadedPdfDataUrl, setUploadedPdfDataUrl] = useState(null);
+  const [pdfDataUrl, setPdfDataUrl] = useState('');
+  const [fileError, setFileError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
 
@@ -48,7 +49,22 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
     const file = e.target.files[0];
     if (!file) return;
 
+    setFileError('');
+    
+    if (file.size > 50 * 1024 * 1024) {
+      setUploadedFile(null);
+      setFileError('File exceeds 50 MB deposit limit.');
+      return;
+    }
+
     setUploadedFile(file);
+
+    // Read raw file as Data URL to preserve 100% byte-for-byte exact file payload
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      setPdfDataUrl(evt.target.result);
+    };
+    reader.readAsDataURL(file);
 
     const cleanName = file.name
       .replace(/\.[^/.]+$/, '')
@@ -58,14 +74,8 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
     if (!title) setTitle(cleanName);
     if (!authors) setAuthors(defaultAuthorName);
     
-    const autoAbstract = `Official document "${file.name}" deposited into the NACETEM ${category} (${lectureSeriesSub}) by ${authors || defaultAuthorName}. Full document verified and indexed for 100% online reading, academic citations, and direct PDF/Word download.`;
+    const autoAbstract = `Official document "${file.name}" deposited into the NACETEM ${category} (${lectureSeriesSub}) by ${authors || defaultAuthorName}. Full document verified and preserved for 100% online reading, academic citations, and direct PDF/Word download.`;
     if (!abstract) setAbstract(autoAbstract);
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setUploadedPdfDataUrl(event.target.result);
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleAutoGenerateAiSummary = () => {
@@ -94,18 +104,21 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
     }, 600);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const finalTitle = title.trim() || (uploadedFile ? uploadedFile.name : 'Departmental Monthly Lecture Series Document');
     const finalAuthors = authors.trim() ? authors.split(/;|,/).map(a => a.trim()).filter(Boolean) : [defaultAuthorName];
     const finalAbstract = abstract.trim() || `Official document "${finalTitle}" deposited under ${lectureSeriesSub} by ${finalAuthors.join(', ')}. Full text indexed for online reading and download.`;
 
+    if (!uploadedFile && !pdfDataUrl) {
+      setFileError('Please select a PDF or Word document file to publish.');
+      return;
+    }
+
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const generatedDoi = customDoi || `10.5281/nacetem.${category.toLowerCase().includes('lecture') ? 'lect' : '2026'}.${Math.floor(1000 + Math.random() * 9000)}`;
-      
+    try {
       const takeawaysArr = keyTakeaways ? keyTakeaways.split('\n').filter(Boolean) : [
         `Delivers instructional modules for ${lectureSeriesSub}.`,
         'Provides actionable STI capacity building frameworks.'
@@ -129,45 +142,43 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
         lectureSeriesSub: category.includes('Departmental') ? lectureSeriesSub : null,
         type,
         year: parseInt(pubYear) || 2026,
-        doi: generatedDoi,
+        doi: customDoi.trim(),
         volume: volume.trim(),
         issue: issue.trim(),
         pages: pages.trim(),
-        isbn: `978-978-542${Math.floor(10 + Math.random() * 80)}-${Math.floor(1 + Math.random() * 9)}`,
+        isbn: '',
         accessLevel: 'Open Access',
         rating: 5.0,
-        citationsCount: 1,
-        downloadsCount: 1,
-        pageCount: 45,
+        citationsCount: 0,
+        downloadsCount: 0,
         coverColor: 'from-emerald-600 via-teal-800 to-slate-900',
         coverAccent: '#059669',
         featured: true,
         audioAvailable: true,
-        pdfDataUrl: uploadedPdfDataUrl,
-        uploadedFileName: uploadedFile ? uploadedFile.name : null,
+        uploadedFileName: uploadedFile ? uploadedFile.name : 'Uploaded_Document.pdf',
+        pdfDataUrl: pdfDataUrl, // Preserves 100% byte-for-byte exact file payload
         abstract: finalAbstract,
         keyTakeaways: takeawaysArr,
         policyRecommendations: policyArr,
         fullText: [
           {
-            sectionTitle: 'Executive Summary & Lecture Overview',
+            sectionTitle: 'Executive Summary & Publication Overview',
             content: `${finalAbstract}\n\nKey Takeaways:\n${takeawaysArr.map(t => '• ' + t).join('\n')}`
           },
           {
-            sectionTitle: '1. Lecture Module & Frameworks',
-            content: `This publication by ${finalAuthors.join(', ')} forms part of the NACETEM Departmental Monthly Lecture Series (${lectureSeriesSub}).\n\nTitle: ${finalTitle}\nPublished: ${pubYear || 2026}.`
-          },
-          {
-            sectionTitle: '2. Implementation & Key References',
-            content: `Policy Directives:\n${policyArr.map((p, i) => `${i+1}. ${p}`).join('\n\n')}`
+            sectionTitle: '1. Full Text & Policy Directives',
+            content: `This publication by ${finalAuthors.join(', ')} forms part of the NACETEM ${category}.\n\nTitle: ${finalTitle}\nPublished: ${pubYear || 2026}.`
           }
         ]
       };
 
-      onUploadBook(newDoc);
+      await onUploadBook(newDoc);
       setIsSubmitting(false);
       onClose();
-    }, 600);
+    } catch (error) {
+      setFileError(error.message || 'Upload failed. Please try again.');
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -181,7 +192,7 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
             </div>
             <div>
               <h2 className="font-extrabold text-lg text-slate-900">Upload Document / Lecture Series</h2>
-              <p className="text-xs text-slate-500 font-medium">Departmental Monthly Lecture Series, Papers, PDF & Word Files</p>
+              <p className="text-xs text-slate-500 font-medium">Original file is preserved 100% intact for online reading and download</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100">
@@ -212,17 +223,18 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
               <FileCheck className="w-7 h-7 mx-auto text-emerald-700" />
               <p className="font-bold text-xs text-emerald-900">Attached File: {uploadedFile.name}</p>
               <p className="text-[11px] text-emerald-700">
-                Size: {(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB • Ready for Dashboard Indexing & Downloads
+                Size: {(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB • Preserved 100% intact for Online Reading & Download
               </p>
             </div>
           ) : (
             <div className="space-y-2">
               <UploadCloud className="w-8 h-8 mx-auto text-emerald-700 animate-bounce" />
               <p className="font-extrabold text-xs text-slate-900">Click to Select or Drag & Drop PDF / Word Document</p>
-              <p className="text-[11px] text-slate-500">Supports .pdf, .docx, .doc, .txt, .pptx files</p>
+              <p className="text-[11px] text-slate-500">Supports .pdf, .docx, .doc, .txt files up to 50 MB.</p>
             </div>
           )}
         </div>
+        {fileError && <p role="alert" className="text-xs font-semibold text-red-700">{fileError}</p>}
 
         {/* Upload Form */}
         <form onSubmit={handleSubmit} className="space-y-4 text-xs font-medium">
@@ -380,11 +392,11 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
               className="px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center space-x-2 shadow-md transition-all hover:scale-105"
             >
               {isSubmitting ? (
-                <span>Indexing Lecture Series...</span>
+                <span>Indexing Document...</span>
               ) : (
                 <>
                   <Check className="w-4 h-4" />
-                  <span>Publish Document to Repository</span>
+                  <span>Publish Document Intact</span>
                 </>
               )}
             </button>

@@ -5,7 +5,7 @@
 
 // Helper to format author names into academic styles
 export function formatAuthors(authorsInput, style = 'APA') {
-  if (!authorsInput) return 'Abubakar Rufai';
+  if (!authorsInput) return '[Author not supplied]';
 
   let rawAuthors = [];
   if (Array.isArray(authorsInput)) {
@@ -15,21 +15,9 @@ export function formatAuthors(authorsInput, style = 'APA') {
   }
 
   // Sanitize usernames / email prefixes like 'rufysanctuary' into proper author names
-  const cleanAuthors = rawAuthors.map(authorStr => {
-    let clean = authorStr.replace(/\(.*\)/g, '').replace(/@.*/, '').trim();
-    if (clean.toLowerCase().includes('staff') || clean.toLowerCase().includes('admin') || clean.toLowerCase().includes('user')) {
-      clean = clean.replace(/(NACETEM|Staff|Admin|User|Scholar|Visitor)/gi, '').trim();
-    }
-    
-    // Auto-map username 'rufysanctuary' to 'Abubakar Rufai'
-    if (clean.toLowerCase() === 'rufysanctuary' || clean.toLowerCase().includes('rufysanctuary')) {
-      return 'Abubakar Rufai';
-    }
+  const cleanAuthors = rawAuthors.map(authorStr => String(authorStr).trim()).filter(Boolean);
 
-    return clean || 'Abubakar Rufai';
-  }).filter(Boolean);
-
-  if (cleanAuthors.length === 0) return 'Abubakar Rufai';
+  if (cleanAuthors.length === 0) return '[Author not supplied]';
 
   const parsedAuthors = cleanAuthors.map(name => {
     if (name.includes(',')) {
@@ -80,6 +68,10 @@ export function formatAuthors(authorsInput, style = 'APA') {
     return `${formatted.slice(0, -1).join(', ')}, and ${formatted[formatted.length - 1]}`;
   }
 
+  if (style === 'BibTeX') {
+    return cleanAuthors.join(' and ');
+  }
+
   return cleanAuthors.join(', ');
 }
 
@@ -87,7 +79,7 @@ export function formatAuthors(authorsInput, style = 'APA') {
  * Format publication title to sentence case for APA or title case for MLA/Chicago
  */
 export function formatTitle(title, style = 'APA') {
-  if (!title) return 'Appraising Institutional Capacity For Implementation Of The Nigerian Cybercrime Act 2015';
+  if (!title) return '[Title not supplied]';
   const cleanTitle = title.trim();
 
   if (style === 'APA') {
@@ -103,35 +95,26 @@ export function formatTitle(title, style = 'APA') {
  * Main Academic Citation Formatter Engine
  */
 export function generateAcademicCitation(docMeta, style = 'APA') {
-  const title = docMeta.title || 'Appraising Institutional Capacity For Implementation Of The Nigerian Cybercrime Act 2015';
-  
-  // Auto-correct year if 2026 is erroneously passed for Cybercrime Act paper
-  let year = docMeta.year || docMeta.pubYear || '2015';
-  if (title.toLowerCase().includes('cybercrime act 2015') && (year === '2026' || year === 2026)) {
-    year = '2015';
-  }
+  const title = docMeta.title || '[Title not supplied]';
+  const year = docMeta.year || docMeta.pubYear || 'n.d.';
 
-  const rawPublisher = docMeta.publisher || docMeta.institution || 'National Centre for Technology Management (NACETEM)';
+  const rawPublisher = docMeta.publisher || docMeta.institution || '[Publisher not supplied]';
   const doi = docMeta.doi || '';
   const volume = docMeta.volume || '';
   const issue = docMeta.issue || '';
   const pages = docMeta.pages || '';
 
   // Clean publisher string (strip out usernames like 'rufysanctuary')
-  let cleanPublisher = rawPublisher.replace(/\(.*\)/g, '').trim();
-  if (!cleanPublisher || cleanPublisher.toLowerCase().includes('rufysanctuary') || cleanPublisher.toLowerCase().includes('staff') || cleanPublisher.toLowerCase().includes('admin') || cleanPublisher.toLowerCase().includes('user')) {
-    cleanPublisher = 'National Centre for Technology Management (NACETEM)';
-  }
+  const cleanPublisher = rawPublisher.trim();
 
   const authorsFormatted = formatAuthors(docMeta.authors || docMeta.authorList, style);
   const formattedTitle = formatTitle(title, style);
 
   // Clean DOI format
-  let cleanDoi = doi;
-  if (cleanDoi.includes('2026.6284') || cleanDoi.includes('2026')) {
-    cleanDoi = cleanDoi.replace('2026', year);
-  }
-  const doiStr = cleanDoi ? (cleanDoi.startsWith('http') ? cleanDoi : `https://doi.org/${cleanDoi}`) : `https://doi.org/10.5281/nacetem.${year}.001`;
+  const cleanDoi = doi.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '').trim();
+  const validDoi = /^10\.\d{4,9}\/\S+$/i.test(cleanDoi) ? cleanDoi : '';
+  const doiStr = validDoi ? `https://doi.org/${validDoi}` : '';
+  const doiSuffix = doiStr ? ` ${doiStr}` : '';
 
   switch (style) {
     case 'APA':
@@ -139,28 +122,28 @@ export function generateAcademicCitation(docMeta, style = 'APA') {
       if (volume) apaJournal += `, ${volume}`;
       if (issue) apaJournal += `(${issue})`;
       if (pages) apaJournal += `, ${pages}`;
-      return `${authorsFormatted} (${year}). ${formattedTitle}. ${apaJournal}. ${doiStr}`;
+      return `${authorsFormatted} (${year}). ${formattedTitle}. ${apaJournal}.${doiSuffix}`;
 
     case 'Harvard':
       let harvardPub = cleanPublisher;
       if (volume) harvardPub += `, ${volume}`;
       if (issue) harvardPub += `(${issue})`;
       if (pages) harvardPub += `, pp.${pages}`;
-      return `${authorsFormatted}, ${year}. ${formattedTitle}. ${harvardPub}. Available at: <${doiStr}>.`;
+      return `${authorsFormatted}, ${year}. ${formattedTitle}. ${harvardPub}.${doiStr ? ` Available at: <${doiStr}>.` : ''}`;
 
     case 'IEEE':
       let ieeeLoc = cleanPublisher;
       if (volume) ieeeLoc += `, vol. ${volume}`;
       if (issue) ieeeLoc += `, no. ${issue}`;
       if (pages) ieeeLoc += `, pp. ${pages}`;
-      return `${authorsFormatted}, "${formattedTitle}," ${ieeeLoc}, ${year}. doi: ${doiStr.replace('https://doi.org/', '')}.`;
+      return `${authorsFormatted}, "${formattedTitle}," ${ieeeLoc}, ${year}.${validDoi ? ` doi: ${validDoi}.` : ''}`;
 
     case 'MLA':
       let mlaPub = cleanPublisher;
       if (volume) mlaPub += `, vol. ${volume}`;
       if (issue) mlaPub += `, no. ${issue}`;
       if (pages) mlaPub += `, pp. ${pages}`;
-      return `${authorsFormatted}. "${formattedTitle}." ${mlaPub}, ${year}, ${doiStr}.`;
+      return `${authorsFormatted}. "${formattedTitle}." ${mlaPub}, ${year}${doiStr ? `, ${doiStr}` : ''}.`;
 
     case 'Chicago':
       let chicagoPub = cleanPublisher;
@@ -168,11 +151,23 @@ export function generateAcademicCitation(docMeta, style = 'APA') {
       if (issue) chicagoPub += `, no. ${issue}`;
       if (pages) chicagoPub += ` (${year}): ${pages}`;
       else chicagoPub += ` (${year})`;
-      return `${authorsFormatted}. "${formattedTitle}." ${chicagoPub}. ${doiStr}`;
+      return `${authorsFormatted}. "${formattedTitle}." ${chicagoPub}.${doiSuffix}`;
 
     case 'BibTeX':
-      const citeKey = 'rufai' + year;
-      return `@article{${citeKey},\n  author = {${authorsFormatted}},\n  title = {${title}},\n  journal = {${cleanPublisher}},\n  year = {${year}}${volume ? ',\n  volume = {' + volume + '}' : ''}${issue ? ',\n  number = {' + issue + '}' : ''}${pages ? ',\n  pages = {' + pages + '}' : ''},\n  doi = {${doiStr.replace('https://doi.org/', '')}}\n}`;
+      const firstAuthor = Array.isArray(docMeta.authors) ? docMeta.authors[0] : String(docMeta.authors || 'unknown').split(/[;,]/)[0];
+      const surname = firstAuthor.trim().split(/\s+/).pop().replace(/[^a-z0-9]/gi, '').toLowerCase() || 'unknown';
+      const citeKey = `${surname}${String(year).replace(/\W/g, '') || 'nd'}`;
+      const fields = [
+        `  author = {${authorsFormatted}}`,
+        `  title = {${title}}`,
+        `  journal = {${cleanPublisher}}`,
+        `  year = {${year}}`,
+        volume && `  volume = {${volume}}`,
+        issue && `  number = {${issue}}`,
+        pages && `  pages = {${pages}}`,
+        validDoi && `  doi = {${validDoi}}`
+      ].filter(Boolean);
+      return `@article{${citeKey},\n${fields.join(',\n')}\n}`;
 
     default:
       return `${authorsFormatted} (${year}). ${formattedTitle}. ${cleanPublisher}.`;

@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
+    "make-admin": "node server/make-admin.js",
     "preview": "vite preview"
   },
   "dependencies": {

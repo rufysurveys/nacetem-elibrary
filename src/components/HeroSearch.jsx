@@ -2,22 +2,16 @@ import React from 'react';
 import { 
   Search, 
   Sparkles, 
-  Filter, 
   X, 
-  BookOpen, 
-  FileText, 
   Award, 
   CheckCircle2, 
-  SlidersHorizontal,
-  Compass
+  SlidersHorizontal
 } from 'lucide-react';
-import { NACETEM_COLLECTIONS, DOCUMENT_TYPES } from '../data/mockLibraryData';
+import { DOCUMENT_TYPES } from '../data/mockLibraryData';
 
 export default function HeroSearch({
   searchQuery,
   setSearchQuery,
-  selectedCategory,
-  setSelectedCategory,
   selectedType,
   setSelectedType,
   openAccessOnly,
@@ -131,30 +125,6 @@ export default function HeroSearch({
           </div>
         </div>
 
-        {/* Collection Filter Category Tabs */}
-        <div className="mt-8 flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none justify-start md:justify-center">
-          {NACETEM_COLLECTIONS.map((col) => {
-            const isActive = selectedCategory === col.id;
-            return (
-              <button
-                key={col.id}
-                onClick={() => setSelectedCategory(col.id)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center space-x-2 border ${
-                  isActive
-                    ? 'bg-emerald-700 text-white border-emerald-800 shadow-md'
-                    : 'bg-white text-slate-700 border-slate-300 hover:border-emerald-500 hover:bg-emerald-50'
-                }`}
-              >
-                <span>{col.name}</span>
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                  isActive ? 'bg-emerald-900 text-emerald-100' : 'bg-slate-100 text-slate-600'
-                }`}>
-                  {col.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
       </div>
     </section>
   );

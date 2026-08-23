@@ -23,8 +23,8 @@ export default function CitationModal({ isOpen, onClose, allBooks, initialBook }
   // Citation Metadata Fields
   const [title, setTitle] = useState('');
   const [authors, setAuthors] = useState('');
-  const [pubYear, setPubYear] = useState('2015');
-  const [publisher, setPublisher] = useState('National Centre for Technology Management (NACETEM)');
+  const [pubYear, setPubYear] = useState('');
+  const [publisher, setPublisher] = useState('');
   const [volume, setVolume] = useState('');
   const [issue, setIssue] = useState('');
   const [pages, setPages] = useState('');
@@ -44,14 +44,14 @@ export default function CitationModal({ isOpen, onClose, allBooks, initialBook }
       setPages(currentBook.pages || '');
       setDoi(currentBook.doi || '');
     } else if (citationSourceMode === 'custom') {
-      setTitle('Appraising Institutional Capacity For Implementation Of The Nigerian Cybercrime Act 2015');
-      setAuthors('Abubakar Rufai');
-      setPubYear('2015');
-      setPublisher('National Centre for Technology Management (NACETEM)');
+      setTitle('');
+      setAuthors('');
+      setPubYear('');
+      setPublisher('');
       setVolume('');
       setIssue('');
       setPages('');
-      setDoi('10.5281/nacetem.2015.001');
+      setDoi('');
     }
   }, [selectedBookId, citationSourceMode, isOpen]);
 

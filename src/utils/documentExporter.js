@@ -4,12 +4,14 @@ import jsPDF from 'jspdf';
  * Exports a publication as an official formatted PDF Document (.pdf)
  */
 export function exportToPdf(book) {
-  // If the book has a real uploaded PDF file Data URL, download the exact uploaded PDF file directly!
-  if (book.pdfDataUrl) {
+  // If original uploaded document data URL or file URL exists, download 100% byte-for-byte exact file
+  if (book.fileUrl || book.pdfDataUrl) {
     const link = document.createElement('a');
-    link.href = book.pdfDataUrl;
-    link.download = book.uploadedFileName || `${book.id}_Uploaded_Paper.pdf`;
+    link.href = book.fileUrl ? `${book.fileUrl}?download=1` : book.pdfDataUrl;
+    link.download = book.uploadedFileName || book.fileName || `${book.id}_Original_Document.pdf`;
+    document.body.appendChild(link);
     link.click();
+    link.remove();
     return;
   }
 
@@ -71,11 +73,13 @@ export function exportToPdf(book) {
     y += 5;
   }
 
+  const authorsStr = Array.isArray(book.authors) ? book.authors.join(', ') : book.authors;
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
   doc.setTextColor(4, 120, 87);
-  doc.text(`Authors: ${book.authors.join(', ')}`, margin + 5, y + 2);
-  doc.text(`DOI: ${book.doi || book.isbn} | Category: ${book.category} (${book.year})`, margin + 5, y + 7);
+  doc.text(`Authors: ${authorsStr}`, margin + 5, y + 2);
+  doc.text(`DOI: ${book.doi || book.isbn || '10.5281/nacetem'} | Category: ${book.category} (${book.year})`, margin + 5, y + 7);
 
   y += 24;
 
@@ -89,7 +93,7 @@ export function exportToPdf(book) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
   doc.setTextColor(51, 65, 85);
-  const abstractLines = doc.splitTextToSize(book.abstract, contentWidth);
+  const abstractLines = doc.splitTextToSize(book.abstract || '', contentWidth);
   doc.text(abstractLines, margin, y);
   y += abstractLines.length * 5 + 6;
 
@@ -136,7 +140,7 @@ export function exportToPdf(book) {
     doc.setFont('times', 'normal');
     doc.setFontSize(10);
     doc.setTextColor(30, 41, 59);
-    const secLines = doc.splitTextToSize(sec.content, contentWidth);
+    const secLines = doc.splitTextToSize(sec.content || '', contentWidth);
 
     secLines.forEach((line) => {
       if (y > pageHeight - 20) {
@@ -165,6 +169,19 @@ export function exportToPdf(book) {
  * Exports a publication as a Microsoft Word Document (.doc / .docx)
  */
 export function exportToWord(book) {
+  // If uploaded file is a word document, download exact original file payload
+  if (book.pdfDataUrl && (book.uploadedFileName?.toLowerCase().endsWith('.doc') || book.uploadedFileName?.toLowerCase().endsWith('.docx'))) {
+    const link = document.createElement('a');
+    link.href = book.pdfDataUrl;
+    link.download = book.uploadedFileName || `${book.id}_Original_Document.docx`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    return;
+  }
+
+  const authorsStr = Array.isArray(book.authors) ? book.authors.join(', ') : book.authors;
+
   let wordContent = `
     <html xmlns:o='urn:schemas-microsoft-microsoft-com:office:office' 
           xmlns:w='urn:schemas-microsoft-microsoft-com:office:word' 
@@ -196,14 +213,14 @@ export function exportToWord(book) {
       ${book.subtitle ? `<div class="subtitle">${book.subtitle}</div>` : ''}
 
       <div class="meta-box">
-        <p class="meta-item">Authors: ${book.authors.join(', ')}</p>
-        <p class="meta-item">Institution: ${book.institution}</p>
-        <p class="meta-item">DOI: ${book.doi || book.isbn} | Publication Year: ${book.year} | Category: ${book.category}</p>
+        <p class="meta-item">Authors: ${authorsStr}</p>
+        <p class="meta-item">Institution: ${book.institution || 'NACETEM'}</p>
+        <p class="meta-item">DOI: ${book.doi || book.isbn || '10.5281/nacetem'} | Publication Year: ${book.year} | Category: ${book.category}</p>
       </div>
 
       <h2>Executive Abstract</h2>
       <div class="abstract-box">
-        <p>${book.abstract}</p>
+        <p>${book.abstract || ''}</p>
       </div>
 
       ${book.keyTakeaways && book.keyTakeaways.length > 0 ? `
@@ -216,7 +233,7 @@ export function exportToWord(book) {
       <h2>Full Publication Text</h2>
       ${(book.fullText || []).map((sec, idx) => `
         <h3>Section ${idx + 1}: ${sec.sectionTitle}</h3>
-        <p style="text-align: justify; font-family: 'Georgia', serif;">${sec.content.replace(/\n/g, '<br/>')}</p>
+        <p style="text-align: justify; font-family: 'Georgia', serif;">${(sec.content || '').replace(/\n/g, '<br/>')}</p>
       `).join('')}
 
       <div class="footer">
