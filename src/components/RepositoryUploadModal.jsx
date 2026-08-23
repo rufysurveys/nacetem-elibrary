@@ -9,9 +9,10 @@ import {
   BookOpen,
   User,
   Building,
-  GraduationCap
+  GraduationCap,
+  BookMarked
 } from 'lucide-react';
-import { NACETEM_COLLECTIONS, DOCUMENT_TYPES, LECTURE_SERIES_OPTIONS } from '../data/mockLibraryData';
+import { NACETEM_COLLECTIONS, DOCUMENT_TYPES, LECTURE_SERIES_OPTIONS, POSTGRADUATE_COURSES_OPTIONS } from '../data/mockLibraryData';
 
 export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, currentUser }) {
   const defaultAuthorName = currentUser?.name && !currentUser.name.includes('@') && !currentUser.name.toLowerCase().includes('staff') 
@@ -27,9 +28,10 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
   const [issue, setIssue] = useState('');
   const [pages, setPages] = useState('');
   const [customDoi, setCustomDoi] = useState('');
-  const [category, setCategory] = useState('Departmental Monthly Lecture Series');
+  const [category, setCategory] = useState('Postgraduate Courses');
   const [lectureSeriesSub, setLectureSeriesSub] = useState('ICT Lecture Series');
-  const [type, setType] = useState('Lecture Notes / Presentation');
+  const [pgCourseSub, setPgCourseSub] = useState('M.Tech Technology Management');
+  const [type, setType] = useState('Courseware Module');
   const [abstract, setAbstract] = useState('');
   const [keyTakeaways, setKeyTakeaways] = useState('');
   const [policyRecommendations, setPolicyRecommendations] = useState('');
@@ -59,7 +61,6 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
 
     setUploadedFile(file);
 
-    // Read raw file as Data URL to preserve 100% byte-for-byte exact file payload
     const reader = new FileReader();
     reader.onload = (evt) => {
       setPdfDataUrl(evt.target.result);
@@ -74,17 +75,19 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
     if (!title) setTitle(cleanName);
     if (!authors) setAuthors(defaultAuthorName);
     
-    const autoAbstract = `Official document "${file.name}" deposited into the NACETEM ${category} (${lectureSeriesSub}) by ${authors || defaultAuthorName}. Full document verified and preserved for 100% online reading, academic citations, and direct PDF/Word download.`;
+    const subLabel = category.includes('Postgraduate') ? pgCourseSub : lectureSeriesSub;
+    const autoAbstract = `Official courseware document "${file.name}" deposited into the NACETEM ${category} (${subLabel}) by ${authors || defaultAuthorName}. Full document verified and preserved for 100% online reading, academic citations, and direct PDF/Word download.`;
     if (!abstract) setAbstract(autoAbstract);
   };
 
   const handleAutoGenerateAiSummary = () => {
-    const activeTitle = title || (uploadedFile ? uploadedFile.name : 'Lecture Series Paper');
+    const subLabel = category.includes('Postgraduate') ? pgCourseSub : lectureSeriesSub;
+    const activeTitle = title || (uploadedFile ? uploadedFile.name : 'Courseware Module');
     setIsGeneratingAi(true);
 
     setTimeout(() => {
       const generatedTakeaways = [
-        `Delivers key instructional modules and research frameworks for ${lectureSeriesSub}.`,
+        `Delivers key instructional modules and research frameworks for ${subLabel}.`,
         `Outlines strategic technology management principles, project programming matrices, and capacity building goals.`,
         `Establishes quantitative metrics for measuring national STI capability and institutional readiness.`
       ].join('\n');
@@ -95,7 +98,7 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
       ].join('\n');
 
       if (!abstract) {
-        setAbstract(`Lecture series module on ${activeTitle} addressing key operational frameworks in ${lectureSeriesSub}. The resource provides actionable methods for research and professional development.`);
+        setAbstract(`Postgraduate courseware module on ${activeTitle} addressing key operational frameworks in ${subLabel}. The resource provides actionable methods for research and professional development.`);
       }
 
       setKeyTakeaways(generatedTakeaways);
@@ -107,9 +110,10 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const finalTitle = title.trim() || (uploadedFile ? uploadedFile.name : 'Departmental Monthly Lecture Series Document');
+    const subLabel = category.includes('Postgraduate') ? pgCourseSub : lectureSeriesSub;
+    const finalTitle = title.trim() || (uploadedFile ? uploadedFile.name : `${category} Document`);
     const finalAuthors = authors.trim() ? authors.split(/;|,/).map(a => a.trim()).filter(Boolean) : [defaultAuthorName];
-    const finalAbstract = abstract.trim() || `Official document "${finalTitle}" deposited under ${lectureSeriesSub} by ${finalAuthors.join(', ')}. Full text indexed for online reading and download.`;
+    const finalAbstract = abstract.trim() || `Official document "${finalTitle}" deposited under ${subLabel} by ${finalAuthors.join(', ')}. Full text indexed for online reading and download.`;
 
     if (!uploadedFile && !pdfDataUrl) {
       setFileError('Please select a PDF or Word document file to publish.');
@@ -120,12 +124,12 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
 
     try {
       const takeawaysArr = keyTakeaways ? keyTakeaways.split('\n').filter(Boolean) : [
-        `Delivers instructional modules for ${lectureSeriesSub}.`,
+        `Delivers instructional modules for ${subLabel}.`,
         'Provides actionable STI capacity building frameworks.'
       ];
 
       const policyArr = policyRecommendations ? policyRecommendations.split('\n').filter(Boolean) : [
-        'Standardize departmental monthly lecture series distribution across zonal centers.',
+        'Standardize departmental monthly lecture series and postgraduate courseware distribution.',
         'Establish continuous professional skill development modules.'
       ];
 
@@ -134,12 +138,13 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
         isUserUploaded: true,
         uploadedBy: currentUser?.name || defaultAuthorName,
         title: finalTitle,
-        subtitle: subtitle.trim() || `Departmental Monthly Lecture Series: ${lectureSeriesSub}`,
+        subtitle: subtitle.trim() || `${category}: ${subLabel}`,
         authors: finalAuthors,
-        institution: `${publisher.trim()} (Departmental Monthly Lecture Series)`,
+        institution: `${publisher.trim()} (${category})`,
         publisher: publisher.trim() || 'National Centre for Technology Management (NACETEM)',
         category,
         lectureSeriesSub: category.includes('Departmental') ? lectureSeriesSub : null,
+        pgCourseSub: category.includes('Postgraduate') ? pgCourseSub : null,
         type,
         year: parseInt(pubYear) || 2026,
         doi: customDoi.trim(),
@@ -151,12 +156,12 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
         rating: 5.0,
         citationsCount: 0,
         downloadsCount: 0,
-        coverColor: 'from-emerald-600 via-teal-800 to-slate-900',
-        coverAccent: '#059669',
+        coverColor: category.includes('Postgraduate') ? 'from-purple-700 via-indigo-900 to-slate-900' : 'from-emerald-600 via-teal-800 to-slate-900',
+        coverAccent: category.includes('Postgraduate') ? '#7c3aed' : '#059669',
         featured: true,
         audioAvailable: true,
         uploadedFileName: uploadedFile ? uploadedFile.name : 'Uploaded_Document.pdf',
-        pdfDataUrl: pdfDataUrl, // Preserves 100% byte-for-byte exact file payload
+        pdfDataUrl: pdfDataUrl,
         abstract: finalAbstract,
         keyTakeaways: takeawaysArr,
         policyRecommendations: policyArr,
@@ -166,8 +171,8 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
             content: `${finalAbstract}\n\nKey Takeaways:\n${takeawaysArr.map(t => '• ' + t).join('\n')}`
           },
           {
-            sectionTitle: '1. Full Text & Policy Directives',
-            content: `This publication by ${finalAuthors.join(', ')} forms part of the NACETEM ${category}.\n\nTitle: ${finalTitle}\nPublished: ${pubYear || 2026}.`
+            sectionTitle: '1. Full Text & Module Frameworks',
+            content: `This publication by ${finalAuthors.join(', ')} forms part of the NACETEM ${category} (${subLabel}).\n\nTitle: ${finalTitle}\nPublished: ${pubYear || 2026}.`
           }
         ]
       };
@@ -191,8 +196,8 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
               <UploadCloud className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="font-extrabold text-lg text-slate-900">Upload Document / Lecture Series</h2>
-              <p className="text-xs text-slate-500 font-medium">Original file is preserved 100% intact for online reading and download</p>
+              <h2 className="font-extrabold text-lg text-slate-900">Upload Document / Courseware</h2>
+              <p className="text-xs text-slate-500 font-medium">Postgraduate Courses, Lecture Series, Papers, PDF & Word Files</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100">
@@ -241,13 +246,13 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
           <div className="space-y-1">
             <label className="text-slate-800 font-bold flex items-center space-x-1">
               <BookOpen className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Document / Lecture Title *</span>
+              <span>Document / Courseware Title *</span>
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Artificial Intelligence and Cybersecurity for Public Sector IT"
+              placeholder="e.g. Strategic Management of Technological Innovation and Industrial R&D"
               className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 font-semibold"
             />
           </div>
@@ -256,7 +261,7 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
             <div className="space-y-1">
               <label className="text-slate-800 font-bold flex items-center space-x-1">
                 <User className="w-3.5 h-3.5 text-emerald-700" />
-                <span>Full Author Name(s) * (e.g. Abubakar Rufai)</span>
+                <span>Full Author / Lecturer Name(s) * (e.g. Abubakar Rufai)</span>
               </label>
               <input
                 type="text"
@@ -270,7 +275,7 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
             <div className="space-y-1">
               <label className="text-slate-800 font-bold flex items-center space-x-1">
                 <Calendar className="w-3.5 h-3.5 text-amber-600" />
-                <span>Publication Year * (e.g. 2026, 2024, 2015)</span>
+                <span>Publication / Academic Year * (e.g. 2026)</span>
               </label>
               <input
                 type="text"
@@ -296,8 +301,24 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
               </select>
             </div>
 
-            {/* Departmental Monthly Lecture Series Sub-Option */}
-            {category.includes('Departmental') ? (
+            {/* Postgraduate Courses Sub-Option */}
+            {category.includes('Postgraduate') ? (
+              <div className="space-y-1">
+                <label className="text-slate-800 font-bold flex items-center space-x-1 text-purple-900">
+                  <BookMarked className="w-3.5 h-3.5 text-purple-700" />
+                  <span>Select Postgraduate Course *</span>
+                </label>
+                <select
+                  value={pgCourseSub}
+                  onChange={(e) => setPgCourseSub(e.target.value)}
+                  className="w-full bg-purple-50 border border-purple-300 rounded-xl px-3 py-2.5 text-purple-950 focus:outline-none focus:border-purple-600 font-extrabold"
+                >
+                  {POSTGRADUATE_COURSES_OPTIONS.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+            ) : category.includes('Departmental') ? (
               <div className="space-y-1">
                 <label className="text-slate-800 font-bold flex items-center space-x-1 text-emerald-800">
                   <GraduationCap className="w-3.5 h-3.5 text-amber-600" />
@@ -350,7 +371,7 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
                 type="text"
                 value={customDoi}
                 onChange={(e) => setCustomDoi(e.target.value)}
-                placeholder="10.5281/nacetem.lect.2026.001"
+                placeholder="10.5281/nacetem.pg.2026.001"
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 font-semibold font-mono"
               />
             </div>
@@ -358,7 +379,7 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
 
           <div className="space-y-1">
             <div className="flex justify-between items-center">
-              <label className="text-slate-800 font-bold">Document Abstract / Lecture Overview</label>
+              <label className="text-slate-800 font-bold">Document Abstract / Course Module Summary</label>
               <button
                 type="button"
                 onClick={handleAutoGenerateAiSummary}

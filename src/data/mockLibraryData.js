@@ -1,5 +1,10 @@
 export const NACETEM_COLLECTIONS = [
-  { id: 'all', name: 'All Collections', count: 40 },
+  { id: 'all', name: 'All Collections', count: 45 },
+  { id: 'pg-courses', name: 'Postgraduate Courses', count: 16 },
+  { id: 'mtech-tech-mgmt', name: '1. M.Tech Technology Management', count: 4 },
+  { id: 'mtech-digital-mkt', name: '2. M.Tech Digital Marketing', count: 4 },
+  { id: 'mtech-nano-tech', name: '3. M.Tech Nanotechnology', count: 4 },
+  { id: 'pgd-tech-mgmt', name: '4. PGD Technology Management', count: 4 },
   { id: 'lecture-series', name: 'Departmental Monthly Lecture Series', count: 12 },
   { id: 'ict-series', name: '1. ICT Lecture Series', count: 4 },
   { id: 'researchers-series', name: '2. Researchers Lecture Series', count: 4 },
@@ -18,9 +23,17 @@ export const LECTURE_SERIES_OPTIONS = [
   'Planning, Programming and Linkages Lecture Series'
 ];
 
+export const POSTGRADUATE_COURSES_OPTIONS = [
+  'M.Tech Technology Management',
+  'M.Tech Digital Marketing',
+  'M.Tech Nanotechnology',
+  'PGD Technology Management'
+];
+
 export const DOCUMENT_TYPES = [
   'All Types',
   'Lecture Notes / Presentation',
+  'Courseware Module',
   'Policy Brief',
   'Technical Report',
   'Journal Paper',
@@ -73,6 +86,155 @@ export const INITIAL_BOOKS = [
       {
         sectionTitle: 'Executive Abstract & Legal Policy Overview',
         content: `Enacted in 2015, the Nigerian Cybercrime Act provides the statutory framework for combating computer-related fraud, critical national information infrastructure protection, and electronic evidence admissibility.`
+      }
+    ]
+  },
+  // Postgraduate Courses Seed Papers
+  {
+    id: 'pg-mtech-tm-2026-001',
+    title: 'Strategic Management of Technological Innovation and Industrial R&D Portfolios',
+    subtitle: 'Postgraduate Courses: M.Tech Technology Management',
+    authors: ['Prof. M. O. Ilori', 'Dr. Akindele Joshua Famurewa'],
+    institution: 'NACETEM Postgraduate School (M.Tech Technology Management)',
+    publisher: 'National Centre for Technology Management (NACETEM)',
+    category: 'Postgraduate Courses',
+    pgCourseSub: 'M.Tech Technology Management',
+    type: 'Courseware Module',
+    year: 2026,
+    doi: '10.5281/nacetem.pg.tm.2026.01',
+    isbn: '978-978-54288-1-1',
+    accessLevel: 'Open Access',
+    rating: 5.0,
+    citationsCount: 165,
+    downloadsCount: 4120,
+    pageCount: 110,
+    coverColor: 'from-emerald-700 via-teal-900 to-slate-900',
+    coverAccent: '#047857',
+    featured: true,
+    audioAvailable: true,
+    abstract: `Core postgraduate courseware module for the M.Tech Technology Management program. Covers technological forecasting, patent analysis, technology transfer contracts, and strategic management of corporate research portfolios in emerging economies.`,
+    keyTakeaways: [
+      'Provides decision matrices for technology evaluation and technology readiness levels (TRL 1-9).',
+      'Examines IP commercialization and licensing agreements in developing countries.'
+    ],
+    policyRecommendations: [
+      'Integrate technology audit metrics into postgraduate engineering management curricula.'
+    ],
+    fullText: [
+      {
+        sectionTitle: 'Module 1: Foundations of Technology Management',
+        content: `Technology management bridges engineering innovation and strategic business leadership. This module examines the lifecycle of technological innovation.`
+      }
+    ]
+  },
+  {
+    id: 'pg-mtech-dm-2026-002',
+    title: 'Data-Driven Digital Marketing, Consumer Analytics, and Enterprise Growth Systems',
+    subtitle: 'Postgraduate Courses: M.Tech Digital Marketing',
+    authors: ['Blessing Ojuloge', 'Dr. Grace N. Okafor'],
+    institution: 'NACETEM Postgraduate School (M.Tech Digital Marketing)',
+    publisher: 'National Centre for Technology Management (NACETEM)',
+    category: 'Postgraduate Courses',
+    pgCourseSub: 'M.Tech Digital Marketing',
+    type: 'Courseware Module',
+    year: 2026,
+    doi: '10.5281/nacetem.pg.dm.2026.02',
+    isbn: '978-978-54288-2-8',
+    accessLevel: 'Open Access',
+    rating: 4.9,
+    citationsCount: 142,
+    downloadsCount: 3890,
+    pageCount: 95,
+    coverColor: 'from-purple-700 via-indigo-900 to-slate-900',
+    coverAccent: '#7c3aed',
+    featured: true,
+    audioAvailable: true,
+    abstract: `Advanced postgraduate module for M.Tech Digital Marketing students. Covers search engine optimization, programmatic advertising, social media telemetry analytics, and customer conversion funnels for tech-enabled MSMEs.`,
+    keyTakeaways: [
+      'Outlines quantitative attribution models for digital marketing campaign ROI.',
+      'Explores privacy-preserving analytics in compliance with global data protection laws.'
+    ],
+    policyRecommendations: [
+      'Promote digital marketing adoption among agricultural cooperatives to expand export market access.'
+    ],
+    fullText: [
+      {
+        sectionTitle: 'Module 1: Digital Ecosystems & Marketing Telemetry',
+        content: `Digital marketing leverages big data analytics to optimize customer acquisition and retention strategies.`
+      }
+    ]
+  },
+  {
+    id: 'pg-mtech-nano-2026-003',
+    title: 'Nanomaterial Synthesis, Characterization, and Industrial Applications in Energy & Medicine',
+    subtitle: 'Postgraduate Courses: M.Tech Nanotechnology',
+    authors: ['Dr. Kazeem Abubakar', 'Dr. Olushola Odusanya'],
+    institution: 'NACETEM Postgraduate School (M.Tech Nanotechnology)',
+    publisher: 'National Centre for Technology Management (NACETEM)',
+    category: 'Postgraduate Courses',
+    pgCourseSub: 'M.Tech Nanotechnology',
+    type: 'Courseware Module',
+    year: 2026,
+    doi: '10.5281/nacetem.pg.nano.2026.03',
+    isbn: '978-978-54288-3-5',
+    accessLevel: 'Open Access',
+    rating: 5.0,
+    citationsCount: 188,
+    downloadsCount: 4650,
+    pageCount: 130,
+    coverColor: 'from-sky-700 via-cyan-900 to-slate-900',
+    coverAccent: '#0284c7',
+    featured: true,
+    audioAvailable: true,
+    abstract: `Flagship postgraduate courseware for M.Tech Nanotechnology. Explores carbon nanotubes, quantum dots, nanocomposites, electron microscopy techniques (SEM/TEM), and nano-biosensors for healthcare and solar cells.`,
+    keyTakeaways: [
+      'Details green synthesis methods using indigenous botanical extracts for silver nanoparticles.',
+      'Outlines safety and environmental risk assessment guidelines for nanomaterial handling.'
+    ],
+    policyRecommendations: [
+      'Establish a National Center for Advanced Characterization and Nanofabrication.'
+    ],
+    fullText: [
+      {
+        sectionTitle: 'Module 1: Quantum Mechanics & Nanomaterial Physics',
+        content: `At the nanometer scale, quantum confinement effects govern material properties, creating unique optical and electronic characteristics.`
+      }
+    ]
+  },
+  {
+    id: 'pg-pgd-tm-2026-004',
+    title: 'Fundamentals of Technology Transfer, Intellectual Property, and Project Management',
+    subtitle: 'Postgraduate Courses: PGD Technology Management',
+    authors: ['Dr. Olawale Rafiu Olaopa', 'Oluwatope O.B. (Omolayo Oluwatope)'],
+    institution: 'NACETEM Postgraduate School (PGD Technology Management)',
+    publisher: 'National Centre for Technology Management (NACETEM)',
+    category: 'Postgraduate Courses',
+    pgCourseSub: 'PGD Technology Management',
+    type: 'Courseware Module',
+    year: 2026,
+    doi: '10.5281/nacetem.pg.pgdtm.2026.04',
+    isbn: '978-978-54288-4-2',
+    accessLevel: 'Open Access',
+    rating: 4.8,
+    citationsCount: 120,
+    downloadsCount: 3200,
+    pageCount: 88,
+    coverColor: 'from-amber-600 via-orange-800 to-slate-900',
+    coverAccent: '#d97706',
+    featured: true,
+    audioAvailable: true,
+    abstract: `Comprehensive diploma courseware for PGD Technology Management students. Introduces technology policy formulation, project appraisal methodologies, feasibility studies, and industrial patent filing.`,
+    keyTakeaways: [
+      'Teaches project feasibility formulation and net present value (NPV) calculations for industrial tech.',
+      'Covers patent drafting and trademark registration protocols in West Africa.'
+    ],
+    policyRecommendations: [
+      'Provide PGD graduates with executive internships in technology incubation hubs.'
+    ],
+    fullText: [
+      {
+        sectionTitle: 'Module 1: Principles of Technology Policy & IP',
+        content: `Postgraduate Diploma students gain foundational knowledge in managing intellectual property and evaluating technology transfer projects.`
       }
     ]
   },
@@ -225,41 +387,6 @@ export const INITIAL_BOOKS = [
         content: `Biotechnology constitutes one of the most transformative pillars of the global knowledge economy. Under the leadership of Dr. Olushola Odusanya, NACETEM presents this policy framework to position Nigeria as West Africa's hub for industrial bio-manufacturing.`
       }
     ]
-  },
-  {
-    id: 'nac-2026-famurewa',
-    title: 'Biofuel Policy Framework and Jatropha Feedstock Enterprise Development in Nigeria',
-    subtitle: 'Strategic Management of Renewable Energy & Agricultural Innovation Systems',
-    authors: ['Dr. Akindele Joshua Famurewa', 'Prof. M. O. Ilori', 'Dr. F. E. Siyanbola'],
-    institution: 'National Centre for Technology Management (NACETEM)',
-    publisher: 'National Centre for Technology Management (NACETEM)',
-    category: 'Green Energy & Climate',
-    type: 'Policy Brief',
-    year: 2026,
-    doi: '10.5281/nacetem.2026.101',
-    isbn: '978-978-54210-4-1',
-    accessLevel: 'Open Access',
-    rating: 4.9,
-    citationsCount: 142,
-    downloadsCount: 3890,
-    pageCount: 78,
-    coverColor: 'from-emerald-700 via-teal-800 to-slate-900',
-    coverAccent: '#059669',
-    featured: true,
-    audioAvailable: true,
-    abstract: `Authored by Dr. Akindele Joshua Famurewa and NACETEM policy researchers, this comprehensive study evaluates the strategic development of biofuel policies in Nigeria.`,
-    keyTakeaways: [
-      'Proposes establishing 6 Zonal Biofuel Commercialization Hubs.'
-    ],
-    policyRecommendations: [
-      'Zero-rate import duties on bio-refinery processing machinery.'
-    ],
-    fullText: [
-      {
-        sectionTitle: 'Executive Summary & Policy Background',
-        content: `Biofuel technology represents a critical nexus between agricultural development, energy security, and environmental sustainability in Nigeria.`
-      }
-    ]
   }
 ];
 
@@ -273,7 +400,7 @@ export const INITIAL_USER_STATE = {
       progress: 65
     }
   ],
-  savedFavorites: ['user-paper-priority-rufai', 'lect-ict-2026-003', 'lect-res-2026-002', 'lect-ppl-2026-001'],
+  savedFavorites: ['user-paper-priority-rufai', 'pg-mtech-tm-2026-001', 'pg-mtech-nano-2026-003', 'lect-ict-2026-003'],
   readingHistory: [
     { bookId: 'user-paper-priority-rufai', lastReadPage: 44, timestamp: '2026-08-11T14:20:00' }
   ],

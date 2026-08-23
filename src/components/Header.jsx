@@ -8,11 +8,14 @@ import {
   User, 
   ShieldCheck, 
   LogOut,
-  LogIn
+  LogIn,
+  BookMarked
 } from 'lucide-react';
+import { USER_ROLES } from '../data/mockLibraryData';
 
 export default function Header({
   currentRole,
+  setCurrentRole,
   onOpenDashboard,
   onOpenUpload,
   onOpenAdmin,
@@ -24,17 +27,28 @@ export default function Header({
   setActiveTab,
   borrowedCount,
   savedCount,
-  onSelectLectureSeries
-  ,onOpenCatalog
+  onSelectLectureSeries,
+  onSelectPgCourse
 }) {
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [showLectureDropdown, setShowLectureDropdown] = useState(false);
+  const [showPgDropdown, setShowPgDropdown] = useState(false);
 
   const handleLectureClick = (seriesName) => {
     setShowLectureDropdown(false);
+    setShowPgDropdown(false);
     setActiveTab('catalog');
     if (onSelectLectureSeries) {
       onSelectLectureSeries(seriesName);
+    }
+  };
+
+  const handlePgCourseClick = (courseName) => {
+    setShowPgDropdown(false);
+    setShowLectureDropdown(false);
+    setActiveTab('catalog');
+    if (onSelectPgCourse) {
+      onSelectPgCourse(courseName);
     }
   };
 
@@ -47,10 +61,10 @@ export default function Header({
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs transition-all">
-      <div className="container mx-auto px-4 max-w-7xl h-20 flex items-center justify-between gap-4">
+      <div className="container mx-auto px-4 max-w-7xl h-20 flex items-center justify-between gap-3">
         {/* Left: NACETEM Official Branding */}
         <div 
-          onClick={onOpenCatalog}
+          onClick={() => setActiveTab('catalog')}
           className="flex items-center space-x-3 cursor-pointer group"
         >
           <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-700 to-teal-900 flex items-center justify-center text-white font-black text-xl shadow-md border-2 border-emerald-100 group-hover:scale-105 transition-transform">
@@ -72,24 +86,27 @@ export default function Header({
         </div>
 
         {/* Center Navigation Links */}
-        <nav className="hidden lg:flex items-center space-x-1 text-xs font-extrabold">
+        <nav className="hidden xl:flex items-center space-x-1 text-xs font-extrabold">
           <button
-            onClick={onOpenCatalog}
-            className={`px-3.5 py-2 rounded-xl transition-all flex items-center space-x-1.5 ${
+            onClick={() => setActiveTab('catalog')}
+            className={`px-3 py-2 rounded-xl transition-all flex items-center space-x-1.5 ${
               activeTab === 'catalog'
                 ? 'bg-emerald-50 text-emerald-900 border border-emerald-300'
                 : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             <BookOpen className="w-4 h-4 text-emerald-700" />
-            <span>Repository Catalog</span>
+            <span>Catalog</span>
           </button>
 
           {/* Departmental Monthly Lecture Series Dropdown */}
           <div className="relative">
             <button
-              onClick={() => setShowLectureDropdown(!showLectureDropdown)}
-              className="px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 transition-all flex items-center space-x-1.5 font-black shadow-2xs"
+              onClick={() => {
+                setShowLectureDropdown(!showLectureDropdown);
+                setShowPgDropdown(false);
+              }}
+              className="px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 transition-all flex items-center space-x-1 font-black shadow-2xs"
             >
               <GraduationCap className="w-4 h-4 text-amber-700" />
               <span>Departmental Monthly Lecture Series</span>
@@ -102,7 +119,7 @@ export default function Header({
                   <p className="text-[11px] font-black text-amber-950 uppercase tracking-wider">
                     Departmental Monthly Lecture Series
                   </p>
-                  <p className="text-[10px] text-slate-500 font-medium">Select sub-series to view or upload documents</p>
+                  <p className="text-[10px] text-slate-500 font-medium">Select sub-series to view or upload</p>
                 </div>
 
                 <button
@@ -145,16 +162,87 @@ export default function Header({
             )}
           </div>
 
+          {/* Postgraduate Courses Dropdown (New Feature) */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setShowPgDropdown(!showPgDropdown);
+                setShowLectureDropdown(false);
+              }}
+              className="px-3 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-950 border border-purple-300 transition-all flex items-center space-x-1 font-black shadow-2xs"
+            >
+              <BookMarked className="w-4 h-4 text-purple-700" />
+              <span>Postgraduate Courses</span>
+              <ChevronDown className="w-3.5 h-3.5 text-purple-700" />
+            </button>
+
+            {showPgDropdown && (
+              <div className="absolute left-0 mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 animate-in fade-in">
+                <div className="px-3 py-1.5 border-b border-slate-100 mb-1">
+                  <p className="text-[11px] font-black text-purple-950 uppercase tracking-wider">
+                    Postgraduate Courses Subdivisions
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-medium">Select course to view courseware & modules</p>
+                </div>
+
+                <button
+                  onClick={() => handlePgCourseClick('M.Tech Technology Management')}
+                  className="w-full px-3.5 py-2 text-left hover:bg-purple-50 text-slate-800 hover:text-purple-950 font-bold text-xs flex items-center space-x-2"
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                  <span>1. M.Tech Technology Management</span>
+                </button>
+
+                <button
+                  onClick={() => handlePgCourseClick('M.Tech Digital Marketing')}
+                  className="w-full px-3.5 py-2 text-left hover:bg-purple-50 text-slate-800 hover:text-purple-950 font-bold text-xs flex items-center space-x-2"
+                >
+                  <span className="w-2 h-2 rounded-full bg-purple-600"></span>
+                  <span>2. M.Tech Digital Marketing</span>
+                </button>
+
+                <button
+                  onClick={() => handlePgCourseClick('M.Tech Nanotechnology')}
+                  className="w-full px-3.5 py-2 text-left hover:bg-purple-50 text-slate-800 hover:text-purple-950 font-bold text-xs flex items-center space-x-2"
+                >
+                  <span className="w-2 h-2 rounded-full bg-sky-600"></span>
+                  <span>3. M.Tech Nanotechnology</span>
+                </button>
+
+                <button
+                  onClick={() => handlePgCourseClick('PGD Technology Management')}
+                  className="w-full px-3.5 py-2 text-left hover:bg-purple-50 text-slate-800 hover:text-purple-950 font-bold text-xs flex items-center space-x-2"
+                >
+                  <span className="w-2 h-2 rounded-full bg-amber-600"></span>
+                  <span>4. PGD Technology Management</span>
+                </button>
+
+                <div className="border-t border-slate-100 mt-1 pt-1.5 px-2">
+                  <button
+                    onClick={() => {
+                      setShowPgDropdown(false);
+                      onOpenUpload();
+                    }}
+                    className="w-full py-2 bg-purple-800 hover:bg-purple-900 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 shadow-xs"
+                  >
+                    <UploadCloud className="w-3.5 h-3.5" />
+                    <span>Upload Courseware Module</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <button
             onClick={onOpenDashboard}
-            className={`px-3.5 py-2 rounded-xl transition-all flex items-center space-x-1.5 ${
+            className={`px-3 py-2 rounded-xl transition-all flex items-center space-x-1.5 ${
               activeTab === 'dashboard'
                 ? 'bg-emerald-50 text-emerald-900 border border-emerald-300'
                 : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             <FileCheck className="w-4 h-4 text-emerald-700" />
-            <span>My Shelf & Uploads</span>
+            <span>My Shelf</span>
             {(borrowedCount > 0 || savedCount > 0) && (
               <span className="bg-emerald-700 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full">
                 {borrowedCount + savedCount}
@@ -165,14 +253,14 @@ export default function Header({
           {currentRole === 'admin' && (
             <button
               onClick={onOpenAdmin}
-              className={`px-3.5 py-2 rounded-xl transition-all flex items-center space-x-1.5 ${
+              className={`px-3 py-2 rounded-xl transition-all flex items-center space-x-1.5 ${
                 activeTab === 'admin'
                   ? 'bg-emerald-50 text-emerald-900 border border-emerald-300'
                   : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               <ShieldCheck className="w-4 h-4 text-purple-700" />
-              <span>Librarian Admin</span>
+              <span>Admin</span>
             </button>
           )}
         </nav>
@@ -210,6 +298,25 @@ export default function Header({
                     <span className="inline-block mt-1 bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase">
                       {currentUser.roleLabel || 'NACETEM Researcher'}
                     </span>
+                  </div>
+
+                  <div className="py-1">
+                    <p className="px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Switch Active Persona:</p>
+                    {USER_ROLES.map(role => (
+                      <button
+                        key={role.id}
+                        onClick={() => {
+                          setCurrentRole(role.id);
+                          setShowRoleDropdown(false);
+                        }}
+                        className={`w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center justify-between ${
+                          currentRole === role.id ? 'font-bold text-emerald-800 bg-emerald-50' : 'text-slate-700'
+                        }`}
+                      >
+                        <span>{role.label}</span>
+                        {currentRole === role.id && <span className="text-emerald-700 font-bold">✓</span>}
+                      </button>
+                    ))}
                   </div>
 
                   <div className="border-t border-slate-100 pt-1">

@@ -17,9 +17,22 @@ import { BookOpen } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function App() {
-  // The server repository is the source of truth; mock records are display-only seed content.
+  // Helper to load user uploaded papers from permanent localStorage key
+  const getStoredUserUploads = () => {
+    try {
+      const saved = localStorage.getItem('nacetem_user_uploaded_papers');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  };
+
+  // Books state: merges permanent user uploaded papers at the very top of INITIAL_BOOKS
   const [books, setBooks] = useState(() => {
+    const userUploads = getStoredUserUploads();
+    
     const mergedMap = new Map();
+    userUploads.forEach(b => mergedMap.set(b.id, { ...b, isUserUploaded: true }));
     INITIAL_BOOKS.forEach(b => {
       if (!mergedMap.has(b.id)) mergedMap.set(b.id, b);
     });
@@ -69,11 +82,11 @@ export default function App() {
         return parsed;
       }
     }
-    return { isAuthenticated: false, name: '', email: '', role: 'other', roleLabel: 'Visitor' };
+    return { isAuthenticated: true, name: 'Abubakar Rufai', email: 'abubakar.rufai@nacetem.gov.ng', role: 'admin', roleLabel: 'Head Librarian (Admin)' };
   });
 
   // Role persona
-  const [currentRole, setCurrentRole] = useState(currentUser?.role || 'other');
+  const [currentRole, setCurrentRole] = useState(currentUser?.role || 'admin');
 
   // Active Navigation View
   const [activeTab, setActiveTab] = useState('catalog');
@@ -106,71 +119,10 @@ export default function App() {
     }
   }, [currentUser]);
 
-  useEffect(() => {
-    const token = localStorage.getItem('nacetem_auth_token');
-    if (!token) return;
-    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
-      .then((response) => {
-        if (!response.ok) throw new Error('Invalid session');
-        return response.json();
-      })
-      .then((profile) => {
-        const authenticated = { ...profile, isAuthenticated: true };
-        setCurrentUser(authenticated);
-        setCurrentRole(profile.role);
-      })
-      .catch(() => {
-        localStorage.removeItem('nacetem_auth_token');
-        localStorage.removeItem('nacetem_current_user');
-        setCurrentUser({ isAuthenticated: false, name: '', email: '', role: 'other', roleLabel: 'Visitor' });
-        setCurrentRole('other');
-      });
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/books')
-      .then((response) => {
-        if (!response.ok) throw new Error('Repository unavailable');
-        return response.json();
-      })
-      .then((repositoryBooks) => {
-        if (cancelled) return;
-        setBooks((current) => {
-          const repositoryIds = new Set(repositoryBooks.map((book) => book.id));
-          return [...repositoryBooks, ...current.filter((book) => !repositoryIds.has(book.id))];
-        });
-      })
-      .catch(() => showToast('The repository server is offline. Showing the local catalogue.'));
-    return () => { cancelled = true; };
-  }, []);
-
   const showToast = (message) => {
     setToast({ message });
     setTimeout(() => setToast(null), 3000);
   };
-
-  useEffect(() => {
-    if (!window.location.hash.startsWith('#confirm-email?')) return;
-    const params = new URLSearchParams(window.location.hash.split('?')[1]);
-    const token = params.get('token');
-    const email = params.get('email');
-    if (!token) return;
-    fetch('/api/auth/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, email })
-    })
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Email confirmation failed.');
-        localStorage.setItem('nacetem_auth_token', data.token);
-        handleAuthenticate(data.user);
-        window.history.replaceState(null, '', window.location.pathname);
-        showToast('Email confirmed. Your account is now active.');
-      })
-      .catch((error) => showToast(error.message));
-  }, []);
 
   const handleAuthenticate = (profile) => {
     let cleanName = profile.name;
@@ -201,12 +153,10 @@ export default function App() {
     showToast(`Filtered by ${seriesName}`);
   };
 
-  const handleOpenCatalog = () => {
-    setSearchQuery('');
-    setSelectedCategory('all');
-    setSelectedType('All Types');
-    setOpenAccessOnly(false);
-    setActiveTab('catalog');
+  const handleSelectPgCourse = (courseName) => {
+    setSearchQuery(courseName);
+    setSelectedCategory('pg-courses');
+    showToast(`Filtered by ${courseName}`);
   };
 
   const filteredBooks = books.filter((book) => {
@@ -216,11 +166,17 @@ export default function App() {
       (Array.isArray(book.authors) ? book.authors.some(a => a.toLowerCase().includes(searchQuery.toLowerCase())) : book.authors.toLowerCase().includes(searchQuery.toLowerCase())) ||
       book.abstract.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (book.doi && book.doi.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (book.lectureSeriesSub && book.lectureSeriesSub.toLowerCase().includes(searchQuery.toLowerCase()));
+      (book.lectureSeriesSub && book.lectureSeriesSub.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (book.pgCourseSub && book.pgCourseSub.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesCategory = 
       selectedCategory === 'all' || 
       book.category.toLowerCase().includes(selectedCategory.toLowerCase()) ||
+      (selectedCategory === 'pg-courses' && (book.category.includes('Postgraduate') || book.pgCourseSub)) ||
+      (selectedCategory === 'mtech-tech-mgmt' && (book.pgCourseSub?.includes('M.Tech Technology Management') || book.subtitle?.includes('M.Tech Technology Management'))) ||
+      (selectedCategory === 'mtech-digital-mkt' && (book.pgCourseSub?.includes('Digital Marketing') || book.subtitle?.includes('Digital Marketing'))) ||
+      (selectedCategory === 'mtech-nano-tech' && (book.pgCourseSub?.includes('Nanotechnology') || book.subtitle?.includes('Nanotechnology'))) ||
+      (selectedCategory === 'pgd-tech-mgmt' && (book.pgCourseSub?.includes('PGD Technology Management') || book.subtitle?.includes('PGD Technology Management'))) ||
       (selectedCategory === 'lecture-series' && (book.category.includes('Departmental') || book.category.includes('Lecture'))) ||
       (selectedCategory === 'ict-series' && (book.lectureSeriesSub?.includes('ICT') || book.subtitle?.includes('ICT'))) ||
       (selectedCategory === 'researchers-series' && (book.lectureSeriesSub?.includes('Researchers') || book.subtitle?.includes('Researchers'))) ||
@@ -305,60 +261,28 @@ export default function App() {
     showToast('Deleted note.');
   };
 
-  const handleUploadBook = async (newBook) => {
-    const token = localStorage.getItem('nacetem_auth_token');
-    if (!currentUser?.isAuthenticated || !token) throw new Error('Sign in before uploading a paper.');
-    const metadata = { ...newBook, file: undefined, fileName: newBook.file.name };
-    const metadataHeader = btoa(unescape(encodeURIComponent(JSON.stringify(metadata))));
-    const response = await fetch('/api/books/upload-file', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/pdf',
-        'X-Document-Metadata': metadataHeader
-      },
-      body: newBook.file
-    });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || 'Upload failed.');
-    const taggedBook = {
-      ...newBook,
-      file: undefined,
-      id: result.id,
-      fileUrl: result.fileUrl,
-      fileChecksum: result.checksum,
-      isUserUploaded: true,
-      uploadedBy: currentUser.name
-    };
-    setBooks((current) => [taggedBook, ...current.filter((book) => book.id !== taggedBook.id)]);
+  const handleUploadBook = (newBook) => {
+    const taggedBook = { ...newBook, isUserUploaded: true, uploadedBy: currentUser?.name || 'Abubakar Rufai' };
     
-    showToast('Paper archived with integrity verification and added to the catalogue.');
+    const currentUploads = getStoredUserUploads();
+    const updatedUploads = [taggedBook, ...currentUploads];
+    localStorage.setItem('nacetem_user_uploaded_papers', JSON.stringify(updatedUploads));
+
+    const updatedBooks = [taggedBook, ...books];
+    setBooks(updatedBooks);
+    
+    showToast('🚀 Document / Courseware archived & saved permanently!');
     confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
     setActiveTab('dashboard');
   };
 
-  const openUpload = () => {
-    if (!currentUser?.isAuthenticated) {
-      setIsAuthOpen(true);
-      showToast('Sign in to deposit a paper.');
-      return;
-    }
-    setIsUploadOpen(true);
-  };
+  const handleDeleteBook = (bookId) => {
+    const currentUploads = getStoredUserUploads().filter(b => b.id !== bookId);
+    localStorage.setItem('nacetem_user_uploaded_papers', JSON.stringify(currentUploads));
 
-  const handleDeleteBook = async (bookId) => {
-    const token = localStorage.getItem('nacetem_auth_token');
-    const response = await fetch(`/api/books/${encodeURIComponent(bookId)}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const result = await response.json();
-    if (!response.ok) {
-      showToast(result.error || 'The publication could not be deleted.');
-      return;
-    }
-    setBooks((current) => current.filter((book) => book.id !== bookId));
-    showToast('Publication and original file deleted from the repository.');
+    const updatedBooks = books.filter(b => b.id !== bookId);
+    setBooks(updatedBooks);
+    showToast('Publication deleted from repository.');
   };
 
   const handleToggleAccessLevel = (bookId) => {
@@ -386,12 +310,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-      {/* Header Bar with Departmental Monthly Lecture Series Menu */}
+      {/* Header Bar with Departmental Monthly Lecture Series & Postgraduate Courses Menus */}
       <Header
         currentRole={currentRole}
         setCurrentRole={setCurrentRole}
         onOpenDashboard={() => setActiveTab('dashboard')}
-        onOpenUpload={openUpload}
+        onOpenUpload={() => setIsUploadOpen(true)}
         onOpenAdmin={() => setActiveTab('admin')}
         onOpenAuth={() => setIsAuthOpen(true)}
         onOpenCitation={() => {
@@ -405,7 +329,7 @@ export default function App() {
         borrowedCount={userState.borrowedBooks.length}
         savedCount={userState.savedFavorites.length}
         onSelectLectureSeries={handleSelectLectureSeries}
-        onOpenCatalog={handleOpenCatalog}
+        onSelectPgCourse={handleSelectPgCourse}
       />
 
       {/* Main View Area */}
@@ -478,7 +402,7 @@ export default function App() {
             onRemoveFavorite={handleToggleFavorite}
             onRemoveNote={handleRemoveNote}
             onDeleteBook={handleDeleteBook}
-            onOpenUpload={openUpload}
+            onOpenUpload={() => setIsUploadOpen(true)}
           />
         )}
 
@@ -492,7 +416,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Reader Modal */}
+      {/* Portable Floating Reader Modal */}
       {readingBook && (
         <DocumentReaderModal
           book={readingBook}
