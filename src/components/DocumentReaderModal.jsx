@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   BookOpen, 
   Check, 
@@ -37,6 +37,8 @@ import {
 import { generateAcademicCitation } from '../utils/citationFormatter';
 import { exportToPdf, exportToWord } from '../utils/documentExporter';
 import { generateAcademicPaperSummary } from '../utils/aiPaperSummarizer';
+import { getPdfFromStorage } from '../utils/pdfStorage';
+import { generateSamplePdfDataUrl } from '../utils/samplePdfGenerator';
 
 export default function DocumentReaderModal({ book, onClose, onAddNote, notes = [] }) {
   // Reading Modes: 'day', 'sepia', 'dark'
@@ -44,18 +46,20 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
     return localStorage.getItem('nacetem_reading_mode') || 'day';
   });
 
+  // Active Exact PDF URL Data
+  const [exactPdfDataUrl, setExactPdfDataUrl] = useState(book?.fileUrl || book?.pdfDataUrl || '');
+  const [isLoadingPdf, setIsLoadingPdf] = useState(true);
+
   // Panel Visibilities
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
-  const [activeLeftTab, setActiveLeftTab] = useState('toc'); // 'toc', 'thumbnails', 'info'
-  const [activeRightTab, setActiveRightTab] = useState('notes'); // 'notes', 'bookmarks', 'highlights', 'search'
+  const [activeLeftTab, setActiveLeftTab] = useState('toc');
+  const [activeRightTab, setActiveRightTab] = useState('notes');
 
   // Document Reading Controls
-  const [viewMode, setViewMode] = useState('continuous'); // 'continuous', 'paged'
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(12);
   const [zoomLevel, setZoomLevel] = useState(100);
-  const [fitMode, setFitMode] = useState('width'); // 'width', 'page'
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // In-Paper Search State
@@ -69,13 +73,45 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
     { page: 1, text: 'Enacted in 2015, the Nigerian Cybercrime Act provides the statutory framework for combating computer-related fraud.' }
   ]);
 
-  const [citationCopied, setCitationCopied] = useState(false);
   const [newNoteText, setNewNoteText] = useState('');
 
-  const fileUrl = book.fileUrl || book.pdfDataUrl || '';
-  const pdfUrl = fileUrl ? `${fileUrl}#view=FitH` : '';
-  const citation = generateAcademicCitation(book, 'APA');
-  const aiSummary = generateAcademicPaperSummary(book);
+  // Fetch or generate exact crisp PDF Data URL on mount
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadExactPdf() {
+      setIsLoadingPdf(true);
+
+      if (book?.fileUrl || book?.pdfDataUrl) {
+        if (isMounted) {
+          setExactPdfDataUrl(book.fileUrl || book.pdfDataUrl);
+          setIsLoadingPdf(false);
+        }
+        return;
+      }
+
+      // Check IndexedDB storage for uploaded binary
+      const storedPdf = await getPdfFromStorage(book?.id);
+      if (storedPdf && isMounted) {
+        setExactPdfDataUrl(storedPdf);
+        setIsLoadingPdf(false);
+        return;
+      }
+
+      // Generate crisp, high-resolution PDF Data URL for default/seeded papers
+      const generatedUrl = generateSamplePdfDataUrl(book);
+      if (isMounted) {
+        setExactPdfDataUrl(generatedUrl);
+        setIsLoadingPdf(false);
+      }
+    }
+
+    loadExactPdf();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [book]);
 
   useEffect(() => {
     localStorage.setItem('nacetem_reading_mode', readingMode);
@@ -89,7 +125,10 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
-  // Detected Sections for Table of Contents
+  const pdfUrl = exactPdfDataUrl ? `${exactPdfDataUrl}#view=FitH` : '';
+  const citation = generateAcademicCitation(book, 'APA');
+
+  // Table of Contents Section Jumps
   const detectedTocSections = [
     { title: 'Abstract & Executive Summary', page: 1 },
     { title: '1. Introduction & Background', page: 2 },
@@ -151,6 +190,19 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
     setNewNoteText('');
   };
 
+  const handleDownloadOriginalPdf = () => {
+    if (exactPdfDataUrl) {
+      const link = document.createElement('a');
+      link.href = exactPdfDataUrl;
+      link.download = book.uploadedFileName || `${book.id}_Original_Document.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } else {
+      exportToPdf(book);
+    }
+  };
+
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => {});
@@ -190,7 +242,7 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
   return (
     <div className={`fixed inset-0 z-50 flex flex-col font-sans transition-colors duration-300 ${currentModeStyle.bg}`} role="dialog" aria-modal="true" aria-label={`Reading ${book.title}`}>
       
-      {/* 3. TOP READER TOOLBAR */}
+      {/* TOP READER TOOLBAR */}
       <header className={`h-16 shrink-0 border-b px-3 md:px-5 flex items-center justify-between gap-3 transition-colors ${currentModeStyle.header}`}>
         <div className="flex items-center gap-2 min-w-0">
           <button
@@ -264,13 +316,13 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
             <Bookmark className="w-4 h-4 fill-current" />
           </button>
 
-          {/* Download Original PDF */}
+          {/* Download 100% Original PDF */}
           <button
-            onClick={() => exportToPdf(book)}
-            className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs flex items-center gap-1 shadow-xs"
+            onClick={handleDownloadOriginalPdf}
+            className="px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-xs"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">PDF</span>
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Download PDF</span>
           </button>
 
           {/* Right Panel Toggle */}
@@ -386,74 +438,28 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
           </aside>
         )}
 
-        {/* 2. CENTER MAIN READING AREA */}
-        <main className="flex-1 min-w-0 flex flex-col relative overflow-hidden">
+        {/* 2. CENTER MAIN READING AREA (Crisp High-Definition PDF Viewer Viewport) */}
+        <main className="flex-1 min-w-0 flex flex-col relative overflow-hidden bg-slate-900">
           
-          {/* Main Reading Viewport */}
-          <div className="flex-1 overflow-y-auto p-4 md:p-8 flex justify-center">
-            {pdfUrl ? (
+          {/* Main PDF Viewport */}
+          <div className="flex-1 w-full h-full relative flex justify-center items-center">
+            {isLoadingPdf ? (
+              <div className="text-center space-y-3 text-white">
+                <Sparkles className="w-8 h-8 text-emerald-400 animate-spin mx-auto" />
+                <p className="text-xs font-bold font-mono">Loading exact high-definition document PDF...</p>
+              </div>
+            ) : pdfUrl ? (
               <iframe 
                 src={pdfUrl} 
                 title={book.title} 
-                className="w-full h-full max-w-4xl border-0 shadow-2xl rounded-2xl bg-white" 
+                className="w-full h-full border-0 bg-white shadow-2xl" 
+                style={{ zoom: `${zoomLevel}%` }}
               />
             ) : (
-              <article 
-                className={`max-w-4xl w-full p-8 md:p-14 rounded-2xl border transition-all space-y-8 font-serif leading-relaxed ${currentModeStyle.paper}`}
-                style={{ zoom: `${zoomLevel}%` }}
-              >
-                {/* Paper Header */}
-                <div className="border-b border-slate-300 dark:border-slate-800 pb-6 space-y-3 font-sans">
-                  <span className="text-xs font-extrabold bg-emerald-100 text-emerald-950 border border-emerald-300 px-3 py-1 rounded-full uppercase">
-                    {book.category}
-                  </span>
-                  <h1 className="text-2xl md:text-3xl font-black leading-tight">{book.title}</h1>
-                  {book.subtitle && <p className="text-sm font-semibold italic opacity-80">{book.subtitle}</p>}
-                  
-                  <div className="pt-2 flex flex-wrap items-center gap-3 text-xs font-bold opacity-80">
-                    <span>Authors: {Array.isArray(book.authors) ? book.authors.join(', ') : book.authors}</span>
-                    <span>•</span>
-                    <span>Published: {book.year}</span>
-                    <span>•</span>
-                    <span>DOI: {book.doi || '10.5281/nacetem.2026.001'}</span>
-                  </div>
-                </div>
-
-                {/* Abstract Section */}
-                <div className="p-5 bg-emerald-500/10 rounded-2xl border border-emerald-500/30 space-y-2 font-sans">
-                  <h2 className="text-xs font-extrabold uppercase tracking-wider text-emerald-700">Executive Abstract</h2>
-                  <p className="text-sm leading-relaxed">{book.abstract}</p>
-                </div>
-
-                {/* Key Takeaways */}
-                {book.keyTakeaways && book.keyTakeaways.length > 0 && (
-                  <div className="p-5 bg-amber-500/10 rounded-2xl border border-amber-500/30 space-y-2 font-sans">
-                    <h2 className="text-xs font-extrabold uppercase tracking-wider text-amber-700">Key Takeaways & Recommendations</h2>
-                    <ul className="space-y-1 text-xs font-medium">
-                      {book.keyTakeaways.map((pt, idx) => (
-                        <li key={idx} className="flex items-start space-x-2">
-                          <span className="text-amber-600 font-bold">•</span>
-                          <span>{pt}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Full Publication Sections */}
-                <div className="space-y-8 pt-4">
-                  {(book.fullText || [{ sectionTitle: 'Full Publication Text', content: book.abstract }]).map((section, index) => (
-                    <section key={index} className="space-y-3">
-                      <h2 className="text-lg font-black border-b border-slate-300 dark:border-slate-800 pb-2 font-sans">
-                        {section.sectionTitle}
-                      </h2>
-                      <p className="whitespace-pre-line leading-relaxed text-sm md:text-base">
-                        {section.content}
-                      </p>
-                    </section>
-                  ))}
-                </div>
-              </article>
+              <div className="text-center space-y-3 text-white">
+                <FileText className="w-12 h-12 text-slate-400 mx-auto" />
+                <p className="text-sm font-bold">PDF Document Stream Ready</p>
+              </div>
             )}
           </div>
 
