@@ -10,7 +10,11 @@ import {
   User,
   Building,
   GraduationCap,
-  BookMarked
+  BookMarked,
+  Layers,
+  Plus,
+  Trash2,
+  FileText
 } from 'lucide-react';
 import { NACETEM_COLLECTIONS, DOCUMENT_TYPES, LECTURE_SERIES_OPTIONS, POSTGRADUATE_COURSES_OPTIONS } from '../data/mockLibraryData';
 import { savePdfToStorage } from '../utils/pdfStorage';
@@ -29,10 +33,10 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
   const [issue, setIssue] = useState('');
   const [pages, setPages] = useState('');
   const [customDoi, setCustomDoi] = useState('');
-  const [category, setCategory] = useState('Postgraduate Courses');
+  const [category, setCategory] = useState('AI & Emerging Tech');
   const [lectureSeriesSub, setLectureSeriesSub] = useState('ICT Lecture Series');
   const [pgCourseSub, setPgCourseSub] = useState('M.Tech Technology Management');
-  const [type, setType] = useState('Courseware Module');
+  const [type, setType] = useState('Research Paper');
   const [abstract, setAbstract] = useState('');
   const [keyTakeaways, setKeyTakeaways] = useState('');
   const [policyRecommendations, setPolicyRecommendations] = useState('');
@@ -41,6 +45,15 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
   const [uploadedFile, setUploadedFile] = useState(null);
   const [pdfDataUrl, setPdfDataUrl] = useState('');
   const [fileError, setFileError] = useState('');
+
+  // Multi-Component / Chapter Upload State
+  const [enableComponents, setEnableComponents] = useState(false);
+  const [componentsList, setComponentsList] = useState([
+    { id: 1, title: 'Chapter 1: Abstract & Introduction', file: null, dataUrl: '', startPage: 1 },
+    { id: 2, title: 'Chapter 2: Literature Review & Framework', file: null, dataUrl: '', startPage: 12 },
+    { id: 3, title: 'Chapter 3: Methodology & Empirical Results', file: null, dataUrl: '', startPage: 25 }
+  ]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
 
@@ -77,30 +90,53 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
     if (!title) setTitle(cleanName);
     if (!authors) setAuthors(defaultAuthorName);
     
-    const subLabel = category.includes('Postgraduate') ? pgCourseSub : lectureSeriesSub;
-    const autoAbstract = `Official document "${file.name}" deposited into the NACETEM ${category} (${subLabel}) by ${authors || defaultAuthorName}. Full document verified and preserved for 100% online reading, academic citations, and direct PDF/Word download.`;
+    const autoAbstract = `Official document "${file.name}" deposited into the NACETEM ${category} by ${authors || defaultAuthorName}. Full document preserved for 100% online reading and direct PDF/Word download.`;
     if (!abstract) setAbstract(autoAbstract);
   };
 
+  const handleComponentFileChange = (idx, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const updated = [...componentsList];
+      updated[idx].file = file;
+      updated[idx].dataUrl = evt.target.result;
+      setComponentsList(updated);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const addComponentItem = () => {
+    setComponentsList([
+      ...componentsList,
+      { id: Date.now(), title: `Chapter ${componentsList.length + 1}: Section Title`, file: null, dataUrl: '', startPage: (componentsList.length + 1) * 10 }
+    ]);
+  };
+
+  const removeComponentItem = (idx) => {
+    setComponentsList(componentsList.filter((_, i) => i !== idx));
+  };
+
   const handleAutoGenerateAiSummary = () => {
-    const subLabel = category.includes('Postgraduate') ? pgCourseSub : lectureSeriesSub;
-    const activeTitle = title || (uploadedFile ? uploadedFile.name : 'Courseware Module');
+    const activeTitle = title || (uploadedFile ? uploadedFile.name : 'Research Publication');
     setIsGeneratingAi(true);
 
     setTimeout(() => {
       const generatedTakeaways = [
-        `Delivers key instructional modules and research frameworks for ${subLabel}.`,
-        `Outlines strategic technology management principles, project programming matrices, and capacity building goals.`,
-        `Establishes quantitative metrics for measuring national STI capability and institutional readiness.`
+        `Presents strategic findings and capacity metrics for ${activeTitle}.`,
+        `Outlines key operational principles, technological readiness levels, and governance matrices.`,
+        `Establishes empirical benchmarks for evaluating national STI infrastructure.`
       ].join('\n');
 
       const generatedPolicy = [
-        `Formulate standardized operational guidelines and inter-agency coordination protocols.`,
-        `Allocate dedicated funding for continuous capacity building and technical infrastructure development.`
+        `Implement standardized inter-agency coordination protocols.`,
+        `Allocate dedicated funding for continuous institutional skill development.`
       ].join('\n');
 
       if (!abstract) {
-        setAbstract(`Postgraduate courseware module on ${activeTitle} addressing key operational frameworks in ${subLabel}. The resource provides actionable methods for research and professional development.`);
+        setAbstract(`Landmark STI publication on ${activeTitle}. The research provides actionable methods for institutional technology management and strategic policy design.`);
       }
 
       setKeyTakeaways(generatedTakeaways);
@@ -112,13 +148,12 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const subLabel = category.includes('Postgraduate') ? pgCourseSub : lectureSeriesSub;
     const finalTitle = title.trim() || (uploadedFile ? uploadedFile.name : `${category} Document`);
     const finalAuthors = authors.trim() ? authors.split(/;|,/).map(a => a.trim()).filter(Boolean) : [defaultAuthorName];
-    const finalAbstract = abstract.trim() || `Official document "${finalTitle}" deposited under ${subLabel} by ${finalAuthors.join(', ')}. Full text indexed for online reading and download.`;
+    const finalAbstract = abstract.trim() || `Official document "${finalTitle}" deposited under ${category} by ${finalAuthors.join(', ')}. Full text preserved for online reading and direct file download.`;
 
     if (!uploadedFile && !pdfDataUrl) {
-      setFileError('Please select a PDF or Word document file to publish.');
+      setFileError('Please select a PDF, Word, or PowerPoint file to publish.');
       return;
     }
 
@@ -127,18 +162,37 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
     try {
       const paperId = `user-paper-${Date.now()}`;
 
-      // 1. Save full exact PDF Data URL into IndexedDB permanently (solves 5MB quota error)
+      // 1. Save main PDF Data URL into IndexedDB
       if (pdfDataUrl) {
         await savePdfToStorage(paperId, pdfDataUrl);
       }
 
+      // 2. Save component chapter files into IndexedDB
+      const processedComponents = [];
+      if (enableComponents) {
+        for (let i = 0; i < componentsList.length; i++) {
+          const comp = componentsList[i];
+          const compKey = `${paperId}_comp_${i}`;
+          if (comp.dataUrl) {
+            await savePdfToStorage(compKey, comp.dataUrl);
+          }
+          processedComponents.push({
+            id: compKey,
+            title: comp.title,
+            startPage: comp.startPage,
+            fileName: comp.file ? comp.file.name : `${comp.title}.pdf`,
+            fileSize: comp.file ? (comp.file.size / 1024).toFixed(1) + ' KB' : 'PDF Document'
+          });
+        }
+      }
+
       const takeawaysArr = keyTakeaways ? keyTakeaways.split('\n').filter(Boolean) : [
-        `Delivers instructional modules for ${subLabel}.`,
-        'Provides actionable STI capacity building frameworks.'
+        `Presents STI capacity building frameworks for ${category}.`,
+        'Provides actionable policy recommendations.'
       ];
 
       const policyArr = policyRecommendations ? policyRecommendations.split('\n').filter(Boolean) : [
-        'Standardize departmental monthly lecture series and postgraduate courseware distribution.',
+        'Standardize STI departmental research repositories.',
         'Establish continuous professional skill development modules.'
       ];
 
@@ -147,13 +201,11 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
         isUserUploaded: true,
         uploadedBy: currentUser?.name || defaultAuthorName,
         title: finalTitle,
-        subtitle: subtitle.trim() || `${category}: ${subLabel}`,
+        subtitle: subtitle.trim() || category,
         authors: finalAuthors,
         institution: `${publisher.trim()} (${category})`,
         publisher: publisher.trim() || 'National Centre for Technology Management (NACETEM)',
         category,
-        lectureSeriesSub: category.includes('Departmental') ? lectureSeriesSub : null,
-        pgCourseSub: category.includes('Postgraduate') ? pgCourseSub : null,
         type,
         year: parseInt(pubYear) || 2026,
         doi: customDoi.trim() || '10.5281/nacetem.2026.001',
@@ -165,12 +217,13 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
         rating: 5.0,
         citationsCount: 0,
         downloadsCount: 0,
-        coverColor: category.includes('Postgraduate') ? 'from-purple-700 via-indigo-900 to-slate-900' : 'from-emerald-600 via-teal-800 to-slate-900',
-        coverAccent: category.includes('Postgraduate') ? '#7c3aed' : '#059669',
+        coverColor: 'from-emerald-600 via-teal-800 to-slate-900',
+        coverAccent: '#059669',
         featured: true,
         audioAvailable: true,
         uploadedFileName: uploadedFile ? uploadedFile.name : 'Uploaded_Document.pdf',
-        pdfDataUrl: pdfDataUrl, // Saved in IndexedDB and memory
+        pdfDataUrl: pdfDataUrl,
+        components: processedComponents,
         abstract: finalAbstract,
         keyTakeaways: takeawaysArr,
         policyRecommendations: policyArr,
@@ -178,10 +231,6 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
           {
             sectionTitle: 'Executive Summary & Publication Overview',
             content: `${finalAbstract}\n\nKey Takeaways:\n${takeawaysArr.map(t => '• ' + t).join('\n')}`
-          },
-          {
-            sectionTitle: '1. Full Text & Module Frameworks',
-            content: `This publication by ${finalAuthors.join(', ')} forms part of the NACETEM ${category} (${subLabel}).\n\nTitle: ${finalTitle}\nPublished: ${pubYear || 2026}.`
           }
         ]
       };
@@ -205,8 +254,8 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
               <UploadCloud className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="font-extrabold text-lg text-slate-900">Upload Document / Courseware</h2>
-              <p className="text-xs text-slate-500 font-medium">Exact PDF/Word file is preserved byte-for-byte in high definition</p>
+              <h2 className="font-extrabold text-lg text-slate-900">Upload Research Paper / Document</h2>
+              <p className="text-xs text-slate-500 font-medium">Original PDF, Word, or PowerPoint file preserved byte-for-byte</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100">
@@ -218,7 +267,7 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
         <input
           type="file"
           ref={fileInputRef}
-          accept=".pdf,.docx,.doc,.txt,.epub,.pptx,.ppt"
+          accept=".pdf,.docx,.doc,.pptx,.ppt,.txt,.epub"
           onChange={handleFileChange}
           className="hidden"
         />
@@ -237,31 +286,117 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
               <FileCheck className="w-7 h-7 mx-auto text-emerald-700" />
               <p className="font-bold text-xs text-emerald-900">Attached File: {uploadedFile.name}</p>
               <p className="text-[11px] text-emerald-700">
-                Size: {(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB • IndexedDB & Server Storage Active
+                Size: {(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB • Preserved Intact
               </p>
             </div>
           ) : (
             <div className="space-y-2">
               <UploadCloud className="w-8 h-8 mx-auto text-emerald-700 animate-bounce" />
-              <p className="font-extrabold text-xs text-slate-900">Click to Select or Drag & Drop PDF / Word Document</p>
-              <p className="text-[11px] text-slate-500">Supports .pdf, .docx, .doc files up to 50 MB.</p>
+              <p className="font-extrabold text-xs text-slate-900">Click to Select Master PDF, Word, or PowerPoint File</p>
+              <p className="text-[11px] text-slate-500">Supports .pdf, .docx, .doc, .pptx files up to 50 MB.</p>
             </div>
           )}
         </div>
         {fileError && <p role="alert" className="text-xs font-semibold text-red-700">{fileError}</p>}
+
+        {/* Multi-Component / Chapter Upload Toggle */}
+        <div className="p-4 bg-purple-50 border border-purple-200 rounded-2xl space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Layers className="w-5 h-5 text-purple-700" />
+              <div>
+                <h4 className="font-extrabold text-xs text-purple-950">Upload Paper in Chapters / Components (Optional)</h4>
+                <p className="text-[11px] text-purple-700">Allows readers to open or download specific chapters separately</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setEnableComponents(!enableComponents)}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                enableComponents ? 'bg-purple-700 text-white' : 'bg-white border border-purple-300 text-purple-900'
+              }`}
+            >
+              {enableComponents ? 'Components Active' : 'Enable Chapters'}
+            </button>
+          </div>
+
+          {enableComponents && (
+            <div className="space-y-3 pt-2">
+              {componentsList.map((comp, idx) => (
+                <div key={comp.id} className="p-3 bg-white border border-purple-200 rounded-xl space-y-2 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <input
+                      type="text"
+                      value={comp.title}
+                      onChange={(e) => {
+                        const updated = [...componentsList];
+                        updated[idx].title = e.target.value;
+                        setComponentsList(updated);
+                      }}
+                      placeholder="e.g. Chapter 1: Introduction"
+                      className="flex-1 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeComponentItem(idx)}
+                      className="p-1 text-slate-400 hover:text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="cursor-pointer bg-purple-100 hover:bg-purple-200 text-purple-900 font-bold px-3 py-1 rounded-lg text-[11px] flex items-center space-x-1">
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>{comp.file ? comp.file.name : 'Attach Chapter PDF/File'}</span>
+                      <input
+                        type="file"
+                        accept=".pdf,.docx,.doc,.pptx,.ppt"
+                        onChange={(e) => handleComponentFileChange(idx, e)}
+                        className="hidden"
+                      />
+                    </label>
+                    <div className="flex items-center space-x-1 text-[11px]">
+                      <span className="text-slate-500 font-semibold">Start Page:</span>
+                      <input
+                        type="number"
+                        value={comp.startPage}
+                        onChange={(e) => {
+                          const updated = [...componentsList];
+                          updated[idx].startPage = parseInt(e.target.value) || 1;
+                          setComponentsList(updated);
+                        }}
+                        className="w-14 bg-slate-50 border border-slate-300 rounded px-1.5 py-0.5 font-mono text-slate-900"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={addComponentItem}
+                className="w-full py-2 bg-purple-100 hover:bg-purple-200 text-purple-900 font-bold text-xs rounded-xl flex items-center justify-center space-x-1"
+              >
+                <Plus className="w-4 h-4 text-purple-700" />
+                <span>Add Another Chapter / Component</span>
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Upload Form */}
         <form onSubmit={handleSubmit} className="space-y-4 text-xs font-medium">
           <div className="space-y-1">
             <label className="text-slate-800 font-bold flex items-center space-x-1">
               <BookOpen className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Document / Courseware Title *</span>
+              <span>Document / Publication Title *</span>
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Strategic Management of Technological Innovation and Industrial R&D"
+              placeholder="e.g. Appraising Institutional Capacity for Technology Transfer in Nigeria"
               className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 font-semibold"
             />
           </div>
@@ -270,7 +405,7 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
             <div className="space-y-1">
               <label className="text-slate-800 font-bold flex items-center space-x-1">
                 <User className="w-3.5 h-3.5 text-emerald-700" />
-                <span>Full Author / Lecturer Name(s) * (e.g. Abubakar Rufai)</span>
+                <span>Full Author Name(s) * (e.g. Abubakar Rufai)</span>
               </label>
               <input
                 type="text"
@@ -284,7 +419,7 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
             <div className="space-y-1">
               <label className="text-slate-800 font-bold flex items-center space-x-1">
                 <Calendar className="w-3.5 h-3.5 text-amber-600" />
-                <span>Publication / Academic Year * (e.g. 2026)</span>
+                <span>Publication Year * (e.g. 2026)</span>
               </label>
               <input
                 type="text"
@@ -310,60 +445,25 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
               </select>
             </div>
 
-            {/* Postgraduate Courses Sub-Option */}
-            {category.includes('Postgraduate') ? (
-              <div className="space-y-1">
-                <label className="text-slate-800 font-bold flex items-center space-x-1 text-purple-900">
-                  <BookMarked className="w-3.5 h-3.5 text-purple-700" />
-                  <span>Select Postgraduate Course *</span>
-                </label>
-                <select
-                  value={pgCourseSub}
-                  onChange={(e) => setPgCourseSub(e.target.value)}
-                  className="w-full bg-purple-50 border border-purple-300 rounded-xl px-3 py-2.5 text-purple-950 focus:outline-none focus:border-purple-600 font-extrabold"
-                >
-                  {POSTGRADUATE_COURSES_OPTIONS.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              </div>
-            ) : category.includes('Departmental') ? (
-              <div className="space-y-1">
-                <label className="text-slate-800 font-bold flex items-center space-x-1 text-emerald-800">
-                  <GraduationCap className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Select Lecture Series Sub-Category *</span>
-                </label>
-                <select
-                  value={lectureSeriesSub}
-                  onChange={(e) => setLectureSeriesSub(e.target.value)}
-                  className="w-full bg-emerald-50 border border-emerald-300 rounded-xl px-3 py-2.5 text-emerald-950 focus:outline-none focus:border-emerald-600 font-extrabold"
-                >
-                  {LECTURE_SERIES_OPTIONS.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                <label className="text-slate-800 font-bold">Document Type</label>
-                <select
-                  value={type}
-                  onChange={(e) => setType(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-none focus:border-emerald-600 font-semibold"
-                >
-                  {DOCUMENT_TYPES.filter(t => t !== 'All Types').map(t => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div className="space-y-1">
+              <label className="text-slate-800 font-bold">Document Type</label>
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-none focus:border-emerald-600 font-semibold"
+              >
+                {DOCUMENT_TYPES.filter(t => t !== 'All Types').map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-slate-800 font-bold flex items-center space-x-1">
                 <Building className="w-3.5 h-3.5 text-emerald-700" />
-                <span>Journal / Publisher / Department Name</span>
+                <span>Journal / Publisher Name</span>
               </label>
               <input
                 type="text"
@@ -380,7 +480,7 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
                 type="text"
                 value={customDoi}
                 onChange={(e) => setCustomDoi(e.target.value)}
-                placeholder="10.5281/nacetem.pg.2026.001"
+                placeholder="10.5281/nacetem.2026.001"
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 font-semibold font-mono"
               />
             </div>
@@ -388,7 +488,7 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
 
           <div className="space-y-1">
             <div className="flex justify-between items-center">
-              <label className="text-slate-800 font-bold">Document Abstract / Course Module Summary</label>
+              <label className="text-slate-800 font-bold">Document Abstract</label>
               <button
                 type="button"
                 onClick={handleAutoGenerateAiSummary}
@@ -422,11 +522,11 @@ export default function RepositoryUploadModal({ isOpen, onClose, onUploadBook, c
               className="px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center space-x-2 shadow-md transition-all hover:scale-105"
             >
               {isSubmitting ? (
-                <span>Archiving Document...</span>
+                <span>Archiving Paper...</span>
               ) : (
                 <>
                   <Check className="w-4 h-4" />
-                  <span>Publish Document Intact</span>
+                  <span>Publish Paper Intact</span>
                 </>
               )}
             </button>

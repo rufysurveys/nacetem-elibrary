@@ -53,6 +53,10 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
   const [rawPdfDataUrl, setRawPdfDataUrl] = useState(book?.fileUrl || book?.pdfDataUrl || '');
   const [isLoadingPdf, setIsLoadingPdf] = useState(true);
 
+  // Active Chapter Component Selection
+  const [activeChapterIndex, setActiveChapterIndex] = useState(-1);
+  const [activeChapterTitle, setActiveChapterTitle] = useState(book?.title || '');
+
   // File Extension Type Detection
   const fileName = book?.uploadedFileName || book?.fileName || '';
   const isPowerPoint = fileName.toLowerCase().endsWith('.pptx') || fileName.toLowerCase().endsWith('.ppt');
@@ -67,8 +71,6 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
   // Document Reading Controls
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(12);
-  const [zoomLevel, setZoomLevel] = useState(100);
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // In-Paper Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,7 +84,6 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
   ]);
 
   const [newNoteText, setNewNoteText] = useState('');
-  const iframeRef = useRef(null);
 
   // Load exact untouched PDF Data URL / Blob URL on mount
   useEffect(() => {
@@ -103,7 +104,7 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
 
       if (isMounted) {
         setRawPdfDataUrl(targetUrl);
-        // Convert to Blob URL (blob:http://...) to bypass iframe base64 security blocks
+        // Convert to native Blob URL (blob:http://...) for 100% crisp HTML5 <object>/<embed> native PDF engine
         const convertedBlobUrl = dataUrlToBlob(targetUrl);
         setExactBlobUrl(convertedBlobUrl);
         setIsLoadingPdf(false);
@@ -117,13 +118,26 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
     };
   }, [book]);
 
-  // When currentPage changes, update iframe src hash to navigate ORIGINAL DOCUMENT to that page
-  useEffect(() => {
-    if (exactBlobUrl && iframeRef.current && !isPowerPoint && !isWordDoc) {
-      const pageTargetUrl = `${exactBlobUrl}#page=${currentPage}&view=FitH`;
-      iframeRef.current.src = pageTargetUrl;
+  // Handle opening a specific Chapter / Component file
+  const handleSelectChapter = async (compIdx, comp) => {
+    setIsLoadingPdf(true);
+    setActiveChapterIndex(compIdx);
+    setActiveChapterTitle(comp.title);
+
+    let compDataUrl = comp.dataUrl || null;
+    if (!compDataUrl && comp.id) {
+      compDataUrl = await getPdfFromStorage(comp.id);
     }
-  }, [currentPage, exactBlobUrl, isPowerPoint, isWordDoc]);
+
+    if (compDataUrl) {
+      const compBlobUrl = dataUrlToBlob(compDataUrl);
+      setExactBlobUrl(compBlobUrl);
+    } else {
+      // Fallback to page anchor in master document
+      if (comp.startPage) setCurrentPage(comp.startPage);
+    }
+    setIsLoadingPdf(false);
+  };
 
   useEffect(() => {
     localStorage.setItem('nacetem_reading_mode', readingMode);
@@ -154,9 +168,6 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
   // Navigation to exact page in Layer A (Original Document)
   const jumpToDocumentPage = (targetPage) => {
     setCurrentPage(targetPage);
-    if (exactBlobUrl && iframeRef.current) {
-      iframeRef.current.src = `${exactBlobUrl}#page=${targetPage}&view=FitH`;
-    }
   };
 
   const handleInPaperSearch = (e) => {
@@ -224,18 +235,6 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
     }
   };
 
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
-      setIsFullscreen(true);
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-        setIsFullscreen(false);
-      }
-    }
-  };
-
   // Color Styles based on Reading Mode
   const modeStyles = {
     day: {
@@ -256,7 +255,7 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
   };
 
   const currentModeStyle = modeStyles[readingMode] || modeStyles.day;
-  const initialPdfSrc = exactBlobUrl ? `${exactBlobUrl}#page=${currentPage}&view=FitH` : '';
+  const pdfViewUrl = exactBlobUrl ? `${exactBlobUrl}#page=${currentPage}` : '';
 
   return (
     <div className={`fixed inset-0 z-50 flex flex-col font-sans transition-colors duration-300 ${currentModeStyle.bg}`} role="dialog" aria-modal="true" aria-label={`Reading ${book.title}`}>
@@ -283,9 +282,9 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
           <div className="min-w-0 pl-1">
             <div className="flex items-center space-x-1.5">
               <span className="bg-emerald-100 text-emerald-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
-                {isPowerPoint ? 'PowerPoint Presentation' : isWordDoc ? 'Word Document' : 'Original PDF'}
+                {isPowerPoint ? 'PowerPoint Presentation' : isWordDoc ? 'Word Document' : 'Original PDF Document'}
               </span>
-              <h2 className="font-extrabold text-xs md:text-sm truncate max-w-xs md:max-w-md">{book.title}</h2>
+              <h2 className="font-extrabold text-xs md:text-sm truncate max-w-xs md:max-w-md">{activeChapterTitle || book.title}</h2>
             </div>
             <p className="text-[11px] opacity-75 truncate hidden sm:block">
               {Array.isArray(book.authors) ? book.authors.join(', ') : book.authors} ({book.year})
@@ -307,17 +306,6 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
 
         {/* Right Controls */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          {/* Zoom Controls */}
-          <div className="hidden lg:flex items-center space-x-1 bg-slate-200/60 dark:bg-slate-800 p-1 rounded-xl text-xs font-mono">
-            <button onClick={() => setZoomLevel(Math.max(50, zoomLevel - 15))} title="Zoom Out" className="p-1 hover:bg-slate-300 dark:hover:bg-slate-700 rounded-lg">
-              <ZoomOut className="w-3.5 h-3.5" />
-            </button>
-            <span className="px-1.5 font-bold">{zoomLevel}%</span>
-            <button onClick={() => setZoomLevel(Math.min(200, zoomLevel + 15))} title="Zoom In" className="p-1 hover:bg-slate-300 dark:hover:bg-slate-700 rounded-lg">
-              <ZoomIn className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
           {/* Reading Mode Toggles */}
           <div className="flex items-center bg-slate-200/60 dark:bg-slate-800 p-1 rounded-xl space-x-1">
             <button onClick={() => setReadingMode('day')} title="Day Mode (White)" className={`p-1.5 rounded-lg ${readingMode === 'day' ? 'bg-white shadow-xs text-amber-600 font-bold' : 'opacity-70'}`}>
@@ -363,7 +351,7 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
       {/* 3-AREA LAYOUT CONTAINER */}
       <div className="flex flex-1 min-h-0 relative">
         
-        {/* 1. LEFT SIDEBAR (Layer B: AI Navigation & TOC Section Jumps) */}
+        {/* 1. LEFT SIDEBAR (Layer B: AI Navigation & Chapter Component List) */}
         {leftSidebarOpen && (
           <aside className={`w-72 md:w-80 shrink-0 border-r flex flex-col transition-colors ${currentModeStyle.sidebar}`}>
             {/* Sidebar Tabs */}
@@ -396,22 +384,65 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
             {/* Sidebar Tab Content */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs font-medium">
               {activeLeftTab === 'toc' && (
-                <div className="space-y-2">
-                  <p className="font-extrabold uppercase tracking-wider text-[10px] opacity-60">Auto-Detected Table of Contents</p>
-                  {detectedTocSections.map((sec, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => jumpToDocumentPage(sec.page)}
-                      className={`w-full text-left p-2.5 rounded-xl border transition-all flex items-center justify-between ${
-                        currentPage === sec.page 
-                          ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 font-bold text-emerald-900 dark:text-emerald-300' 
-                          : 'border-transparent hover:bg-slate-200 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      <span className="line-clamp-1">{sec.title}</span>
-                      <span className="font-mono text-[10px] opacity-70">p. {sec.page}</span>
-                    </button>
-                  ))}
+                <div className="space-y-4">
+                  {/* Multi-Component / Chapter Section */}
+                  {Array.isArray(book.components) && book.components.length > 0 && (
+                    <div className="p-3 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-2xl space-y-2">
+                      <div className="flex items-center space-x-1.5 text-purple-900 dark:text-purple-300 font-extrabold text-[11px] uppercase tracking-wider">
+                        <Layers className="w-4 h-4 text-purple-700" />
+                        <span>Paper Components & Chapters</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        <button
+                          onClick={() => {
+                            setActiveChapterIndex(-1);
+                            setActiveChapterTitle(book.title);
+                            if (rawPdfDataUrl) setExactBlobUrl(dataUrlToBlob(rawPdfDataUrl));
+                          }}
+                          className={`w-full text-left p-2 rounded-xl border text-xs transition-all font-bold ${
+                            activeChapterIndex === -1
+                              ? 'bg-purple-700 text-white border-purple-800'
+                              : 'bg-white dark:bg-slate-800 border-purple-200 text-purple-950 dark:text-purple-200 hover:bg-purple-100'
+                          }`}
+                        >
+                          Full Master Document (All Chapters)
+                        </button>
+
+                        {book.components.map((comp, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleSelectChapter(idx, comp)}
+                            className={`w-full text-left p-2 rounded-xl border text-xs transition-all flex items-center justify-between ${
+                              activeChapterIndex === idx
+                                ? 'bg-purple-700 text-white border-purple-800 font-bold'
+                                : 'bg-white dark:bg-slate-800 border-slate-200 text-slate-800 dark:text-slate-200 hover:bg-purple-50'
+                            }`}
+                          >
+                            <span className="line-clamp-1">{comp.title}</span>
+                            <span className="text-[10px] font-mono opacity-70 shrink-0 ml-1">{comp.fileSize || 'PDF'}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <p className="font-extrabold uppercase tracking-wider text-[10px] opacity-60">Auto-Detected Table of Contents</p>
+                    {detectedTocSections.map((sec, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => jumpToDocumentPage(sec.page)}
+                        className={`w-full text-left p-2.5 rounded-xl border transition-all flex items-center justify-between ${
+                          currentPage === sec.page 
+                            ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 font-bold text-emerald-900 dark:text-emerald-300' 
+                            : 'border-transparent hover:bg-slate-200 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        <span className="line-clamp-1">{sec.title}</span>
+                        <span className="font-mono text-[10px] opacity-70">p. {sec.page}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -462,11 +493,11 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
           </aside>
         )}
 
-        {/* 2. CENTER MAIN READING AREA (Layer A: Untouched Original Document Viewport) */}
+        {/* 2. CENTER MAIN READING AREA (Layer A: Untouched Original PDF Native Viewer) */}
         <main className="flex-1 min-w-0 flex flex-col relative overflow-hidden bg-slate-900">
           
-          {/* Main Document Viewport */}
-          <div className="flex-1 w-full h-full relative flex justify-center items-center">
+          {/* Main Document Viewport using HTML5 Native <object> and <embed> PDF Engine */}
+          <div className="flex-1 w-full h-full relative flex justify-center items-center overflow-hidden">
             {isLoadingPdf ? (
               <div className="text-center space-y-3 text-white">
                 <Sparkles className="w-8 h-8 text-emerald-400 animate-spin mx-auto" />
@@ -487,18 +518,28 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
                   <span>Download & Open Original PowerPoint Presentation</span>
                 </button>
               </div>
-            ) : initialPdfSrc ? (
-              <iframe 
-                ref={iframeRef}
-                src={initialPdfSrc} 
-                title={book.title} 
-                className="w-full h-full border-0 bg-white shadow-2xl" 
-                style={{ zoom: `${zoomLevel}%` }}
-              />
+            ) : pdfViewUrl ? (
+              <object
+                data={pdfViewUrl}
+                type="application/pdf"
+                className="w-full h-full border-0 bg-white"
+              >
+                <embed src={pdfViewUrl} type="application/pdf" className="w-full h-full border-0 bg-white" />
+                <div className="text-center space-y-3 text-white p-6">
+                  <FileText className="w-12 h-12 text-slate-400 mx-auto" />
+                  <p className="text-sm font-bold">Original PDF Stream Active</p>
+                  <button
+                    onClick={handleDownloadOriginalFile}
+                    className="px-4 py-2 bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md"
+                  >
+                    Download Original PDF
+                  </button>
+                </div>
+              </object>
             ) : (
               <div className="text-center space-y-3 text-white">
                 <FileText className="w-12 h-12 text-slate-400 mx-auto" />
-                <p className="text-sm font-bold">Document Ready</p>
+                <p className="text-sm font-bold">Document Stream Ready</p>
               </div>
             )}
           </div>

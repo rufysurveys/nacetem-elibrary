@@ -9,7 +9,8 @@ import {
   Building, 
   ExternalLink,
   Quote,
-  ShieldCheck
+  ShieldCheck,
+  Layers
 } from 'lucide-react';
 import { exportToPdf } from '../utils/documentExporter';
 
@@ -25,17 +26,36 @@ export default function BookCard({
 }) {
   const authorsStr = Array.isArray(book.authors) ? book.authors.join(', ') : (book.authors || 'NACETEM Researcher');
 
+  // Format Category Badge so long administrative categories never distort research paper cards
+  const formatCategoryBadge = (cat) => {
+    if (!cat) return 'Research Paper';
+    if (cat === 'Departmental Monthly Lecture Series') return 'Lecture Series';
+    if (cat === 'Postgraduate Courses') return 'Courseware Module';
+    return cat;
+  };
+
+  const badgeCategory = formatCategoryBadge(book.category);
+  const hasComponents = Array.isArray(book.components) && book.components.length > 0;
+
   return (
     <div className="bg-white rounded-3xl border border-slate-200 shadow-xs hover:shadow-lg transition-all duration-300 flex flex-col justify-between overflow-hidden group hover:-translate-y-1">
       {/* Top Banner Accent */}
       <div className="p-5 space-y-3">
         <div className="flex items-center justify-between gap-2">
           <span className="bg-emerald-100 text-emerald-950 border border-emerald-300 font-extrabold text-[10px] px-3 py-0.5 rounded-full uppercase tracking-wider">
-            {book.category}
+            {badgeCategory}
           </span>
-          <span className="bg-slate-100 text-slate-700 font-mono text-[11px] font-bold px-2 py-0.5 rounded-lg border border-slate-200">
-            {book.year}
-          </span>
+          <div className="flex items-center space-x-1.5">
+            {hasComponents && (
+              <span className="bg-purple-100 text-purple-900 border border-purple-300 font-bold text-[10px] px-2 py-0.5 rounded-md flex items-center space-x-1">
+                <Layers className="w-3 h-3 text-purple-700" />
+                <span>{book.components.length} Chapters</span>
+              </span>
+            )}
+            <span className="bg-slate-100 text-slate-700 font-mono text-[11px] font-bold px-2 py-0.5 rounded-lg border border-slate-200">
+              {book.year}
+            </span>
+          </div>
         </div>
 
         {/* Paper Title */}
@@ -99,7 +119,7 @@ export default function BookCard({
           {/* Download Button */}
           <button
             onClick={() => exportToPdf(book)}
-            title="Download PDF"
+            title="Download Original PDF"
             className="p-2 rounded-xl border border-slate-200 hover:bg-slate-200 text-slate-700"
           >
             <Download className="w-4 h-4 text-emerald-700" />
