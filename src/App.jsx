@@ -4,6 +4,8 @@ import HeroSearch from './components/HeroSearch';
 import DgWelcomeBanner from './components/DgWelcomeBanner';
 import BookCard from './components/BookCard';
 import DocumentReaderModal from './components/DocumentReaderModal';
+import DocumentLandingModal from './components/DocumentLandingModal';
+import MyResearchDashboard from './components/MyResearchDashboard';
 import AiCopilotDrawer from './components/AiCopilotDrawer';
 import PersonalDashboard from './components/PersonalDashboard';
 import RepositoryUploadModal from './components/RepositoryUploadModal';
@@ -93,6 +95,7 @@ export default function App() {
 
   // Modals & Drawers
   const [readingBook, setReadingBook] = useState(null);
+  const [landingBook, setLandingBook] = useState(null);
   const [isAiCopilotOpen, setIsAiCopilotOpen] = useState(false);
   const [focusedBookForAi, setFocusedBookForAi] = useState(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -271,9 +274,9 @@ export default function App() {
     const updatedBooks = [taggedBook, ...books];
     setBooks(updatedBooks);
     
-    showToast('🚀 Document / Courseware archived & saved permanently!');
+    showToast('🚀 Publication archived & indexed in My Research!');
     confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
-    setActiveTab('dashboard');
+    setActiveTab('my-research');
   };
 
   const handleDeleteBook = (bookId) => {
@@ -310,7 +313,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-      {/* Header Bar with Departmental Monthly Lecture Series & Postgraduate Courses Menus */}
+      {/* Header Bar */}
       <Header
         currentRole={currentRole}
         setCurrentRole={setCurrentRole}
@@ -336,7 +339,7 @@ export default function App() {
       <main className="flex-1">
         {activeTab === 'catalog' && (
           <div className="space-y-8 pb-16">
-            {/* Official Welcome Message Banner from Director-General Dr. Olushola Odusanya */}
+            {/* Director-General Dr. Olushola Odusanya Welcome Banner */}
             <DgWelcomeBanner />
 
             {/* Hero Search Section */}
@@ -378,6 +381,7 @@ export default function App() {
                       key={book.id}
                       book={book}
                       onRead={(b) => setReadingBook(b)}
+                      onOpenLanding={(b) => setLandingBook(b)}
                       onBorrow={handleBorrow}
                       onToggleFavorite={handleToggleFavorite}
                       onAskAi={handleAskAi}
@@ -389,6 +393,17 @@ export default function App() {
               )}
             </div>
           </div>
+        )}
+
+        {activeTab === 'my-research' && (
+          <MyResearchDashboard
+            currentUser={currentUser}
+            allBooks={books}
+            onOpenReader={(b) => setReadingBook(b)}
+            onOpenLanding={(b) => setLandingBook(b)}
+            onOpenUpload={() => setIsUploadOpen(true)}
+            onDeleteBook={handleDeleteBook}
+          />
         )}
 
         {activeTab === 'dashboard' && (
@@ -416,13 +431,29 @@ export default function App() {
         )}
       </main>
 
-      {/* Portable Floating Reader Modal */}
+      {/* 1. Custom 3-Panel Academic Document Reader */}
       {readingBook && (
         <DocumentReaderModal
           book={readingBook}
           onClose={() => setReadingBook(null)}
           onAddNote={handleAddNote}
           notes={userState.notes.filter(n => n.bookId === readingBook.id)}
+        />
+      )}
+
+      {/* 2. Academic Document Landing Page / Details Modal */}
+      {landingBook && (
+        <DocumentLandingModal
+          book={landingBook}
+          isOpen={!!landingBook}
+          onClose={() => setLandingBook(null)}
+          onOpenReader={(b) => setReadingBook(b)}
+          onOpenCitation={(b) => {
+            setInitialBookForCitation(b);
+            setIsCitationOpen(true);
+          }}
+          isFavorite={userState.savedFavorites.includes(landingBook.id)}
+          onToggleFavorite={handleToggleFavorite}
         />
       )}
 
@@ -447,6 +478,15 @@ export default function App() {
         onClose={() => setIsCitationOpen(false)}
         allBooks={books}
         initialBook={initialBookForCitation}
+      />
+
+      {/* AI Research Assistant / Copilot */}
+      <AiCopilotDrawer
+        isOpen={isAiCopilotOpen}
+        onClose={() => setIsAiCopilotOpen(false)}
+        focusedBook={focusedBookForAi}
+        allBooks={books}
+        currentUser={currentUser}
       />
 
       {/* Toast Notification */}

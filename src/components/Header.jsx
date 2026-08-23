@@ -9,7 +9,9 @@ import {
   ShieldCheck, 
   LogOut,
   LogIn,
-  BookMarked
+  BookMarked,
+  Sparkles,
+  Compass
 } from 'lucide-react';
 import { USER_ROLES } from '../data/mockLibraryData';
 
@@ -99,6 +101,21 @@ export default function Header({
             <span>Catalog</span>
           </button>
 
+          {/* MY RESEARCH Navigation Tab */}
+          {isAuthenticated && (
+            <button
+              onClick={() => setActiveTab('my-research')}
+              className={`px-3.5 py-2 rounded-xl transition-all flex items-center space-x-1.5 font-black ${
+                activeTab === 'my-research'
+                  ? 'bg-gradient-to-r from-emerald-700 to-teal-900 text-white shadow-xs'
+                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300'
+              }`}
+            >
+              <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+              <span>MY RESEARCH</span>
+            </button>
+          )}
+
           {/* Departmental Monthly Lecture Series Dropdown */}
           <div className="relative">
             <button
@@ -162,7 +179,7 @@ export default function Header({
             )}
           </div>
 
-          {/* Postgraduate Courses Dropdown (New Feature) */}
+          {/* Postgraduate Courses Dropdown */}
           <div className="relative">
             <button
               onClick={() => {
@@ -301,7 +318,18 @@ export default function Header({
                   </div>
 
                   <div className="py-1">
-                    <p className="px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Switch Active Persona:</p>
+                    <button
+                      onClick={() => {
+                        setShowRoleDropdown(false);
+                        setActiveTab('my-research');
+                      }}
+                      className="w-full px-3.5 py-2 text-left hover:bg-emerald-50 text-emerald-900 font-extrabold flex items-center space-x-2"
+                    >
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                      <span>Go to MY RESEARCH</span>
+                    </button>
+                    
+                    <p className="px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-t border-slate-100 mt-1 pt-1.5">Switch Active Persona:</p>
                     {USER_ROLES.map(role => (
                       <button
                         key={role.id}
