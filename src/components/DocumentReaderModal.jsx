@@ -32,13 +32,15 @@ import {
   Layers,
   Sparkles,
   ArrowLeft,
-  Share2
+  Share2,
+  Presentation
 } from 'lucide-react';
 import { generateAcademicCitation } from '../utils/citationFormatter';
 import { exportToPdf, exportToWord } from '../utils/documentExporter';
 import { generateAcademicPaperSummary } from '../utils/aiPaperSummarizer';
 import { getPdfFromStorage } from '../utils/pdfStorage';
 import { generateSamplePdfDataUrl } from '../utils/samplePdfGenerator';
+import { dataUrlToBlob, downloadOriginalBinaryFile } from '../utils/blobHelper';
 
 export default function DocumentReaderModal({ book, onClose, onAddNote, notes = [] }) {
   // Reading Modes: 'day', 'sepia', 'dark'
@@ -46,9 +48,15 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
     return localStorage.getItem('nacetem_reading_mode') || 'day';
   });
 
-  // Active Exact PDF URL Data (Layer A: Original Document)
-  const [exactPdfDataUrl, setExactPdfDataUrl] = useState(book?.fileUrl || book?.pdfDataUrl || '');
+  // Active Exact Blob URL Data (Layer A: Untouched Original Document)
+  const [exactBlobUrl, setExactBlobUrl] = useState('');
+  const [rawPdfDataUrl, setRawPdfDataUrl] = useState(book?.fileUrl || book?.pdfDataUrl || '');
   const [isLoadingPdf, setIsLoadingPdf] = useState(true);
+
+  // File Extension Type Detection
+  const fileName = book?.uploadedFileName || book?.fileName || '';
+  const isPowerPoint = fileName.toLowerCase().endsWith('.pptx') || fileName.toLowerCase().endsWith('.ppt');
+  const isWordDoc = fileName.toLowerCase().endsWith('.docx') || fileName.toLowerCase().endsWith('.doc');
 
   // Panel Visibilities
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
@@ -76,33 +84,28 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
   const [newNoteText, setNewNoteText] = useState('');
   const iframeRef = useRef(null);
 
-  // Load exact untouched PDF Data URL on mount
+  // Load exact untouched PDF Data URL / Blob URL on mount
   useEffect(() => {
     let isMounted = true;
 
     async function loadExactPdf() {
       setIsLoadingPdf(true);
 
-      if (book?.fileUrl || book?.pdfDataUrl) {
-        if (isMounted) {
-          setExactPdfDataUrl(book.fileUrl || book.pdfDataUrl);
-          setIsLoadingPdf(false);
-        }
-        return;
+      let targetUrl = book?.fileUrl || book?.pdfDataUrl || '';
+
+      if (!targetUrl && book?.id) {
+        targetUrl = await getPdfFromStorage(book.id);
       }
 
-      // Check IndexedDB storage for uploaded binary
-      const storedPdf = await getPdfFromStorage(book?.id);
-      if (storedPdf && isMounted) {
-        setExactPdfDataUrl(storedPdf);
-        setIsLoadingPdf(false);
-        return;
+      if (!targetUrl) {
+        targetUrl = generateSamplePdfDataUrl(book);
       }
 
-      // Generate crisp high-resolution PDF Data URL for default/seeded papers
-      const generatedUrl = generateSamplePdfDataUrl(book);
       if (isMounted) {
-        setExactPdfDataUrl(generatedUrl);
+        setRawPdfDataUrl(targetUrl);
+        // Convert to Blob URL (blob:http://...) to bypass iframe base64 security blocks
+        const convertedBlobUrl = dataUrlToBlob(targetUrl);
+        setExactBlobUrl(convertedBlobUrl);
         setIsLoadingPdf(false);
       }
     }
@@ -116,11 +119,11 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
 
   // When currentPage changes, update iframe src hash to navigate ORIGINAL DOCUMENT to that page
   useEffect(() => {
-    if (exactPdfDataUrl && iframeRef.current) {
-      const pageTargetUrl = `${exactPdfDataUrl}#page=${currentPage}&view=FitH`;
+    if (exactBlobUrl && iframeRef.current && !isPowerPoint && !isWordDoc) {
+      const pageTargetUrl = `${exactBlobUrl}#page=${currentPage}&view=FitH`;
       iframeRef.current.src = pageTargetUrl;
     }
-  }, [currentPage, exactPdfDataUrl]);
+  }, [currentPage, exactBlobUrl, isPowerPoint, isWordDoc]);
 
   useEffect(() => {
     localStorage.setItem('nacetem_reading_mode', readingMode);
@@ -151,8 +154,8 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
   // Navigation to exact page in Layer A (Original Document)
   const jumpToDocumentPage = (targetPage) => {
     setCurrentPage(targetPage);
-    if (exactPdfDataUrl && iframeRef.current) {
-      iframeRef.current.src = `${exactPdfDataUrl}#page=${targetPage}&view=FitH`;
+    if (exactBlobUrl && iframeRef.current) {
+      iframeRef.current.src = `${exactBlobUrl}#page=${targetPage}&view=FitH`;
     }
   };
 
@@ -210,8 +213,15 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
     setNewNoteText('');
   };
 
-  const handleDownloadOriginalPdf = async () => {
-    await exportToPdf(book);
+  const handleDownloadOriginalFile = () => {
+    const fileToDownload = exactBlobUrl || rawPdfDataUrl;
+    const targetName = book.uploadedFileName || book.fileName || `${book.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+    
+    if (fileToDownload) {
+      downloadOriginalBinaryFile(fileToDownload, targetName);
+    } else {
+      exportToPdf(book);
+    }
   };
 
   const toggleFullscreen = () => {
@@ -246,7 +256,7 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
   };
 
   const currentModeStyle = modeStyles[readingMode] || modeStyles.day;
-  const initialPdfSrc = exactPdfDataUrl ? `${exactPdfDataUrl}#page=${currentPage}&view=FitH` : '';
+  const initialPdfSrc = exactBlobUrl ? `${exactBlobUrl}#page=${currentPage}&view=FitH` : '';
 
   return (
     <div className={`fixed inset-0 z-50 flex flex-col font-sans transition-colors duration-300 ${currentModeStyle.bg}`} role="dialog" aria-modal="true" aria-label={`Reading ${book.title}`}>
@@ -273,7 +283,7 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
           <div className="min-w-0 pl-1">
             <div className="flex items-center space-x-1.5">
               <span className="bg-emerald-100 text-emerald-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
-                Original Document
+                {isPowerPoint ? 'PowerPoint Presentation' : isWordDoc ? 'Word Document' : 'Original PDF'}
               </span>
               <h2 className="font-extrabold text-xs md:text-sm truncate max-w-xs md:max-w-md">{book.title}</h2>
             </div>
@@ -332,7 +342,7 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
 
           {/* Download 100% Exact Original File */}
           <button
-            onClick={handleDownloadOriginalPdf}
+            onClick={handleDownloadOriginalFile}
             className="px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-xs"
           >
             <Download className="w-4 h-4" />
@@ -455,12 +465,27 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
         {/* 2. CENTER MAIN READING AREA (Layer A: Untouched Original Document Viewport) */}
         <main className="flex-1 min-w-0 flex flex-col relative overflow-hidden bg-slate-900">
           
-          {/* Main PDF Viewport */}
+          {/* Main Document Viewport */}
           <div className="flex-1 w-full h-full relative flex justify-center items-center">
             {isLoadingPdf ? (
               <div className="text-center space-y-3 text-white">
                 <Sparkles className="w-8 h-8 text-emerald-400 animate-spin mx-auto" />
                 <p className="text-xs font-bold font-mono">Loading exact high-definition original document...</p>
+              </div>
+            ) : isPowerPoint ? (
+              <div className="text-center space-y-4 text-white p-8 max-w-lg bg-slate-800 rounded-3xl border border-slate-700 shadow-2xl">
+                <Presentation className="w-16 h-16 text-amber-400 mx-auto animate-bounce" />
+                <h3 className="text-lg font-black">{book.title}</h3>
+                <p className="text-xs text-slate-300">
+                  Original PowerPoint Presentation (<span className="font-mono text-amber-300 font-bold">{fileName}</span>) preserved byte-for-byte.
+                </p>
+                <button
+                  onClick={handleDownloadOriginalFile}
+                  className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center space-x-2 mx-auto shadow-lg"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Download & Open Original PowerPoint Presentation</span>
+                </button>
               </div>
             ) : initialPdfSrc ? (
               <iframe 
@@ -473,7 +498,7 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
             ) : (
               <div className="text-center space-y-3 text-white">
                 <FileText className="w-12 h-12 text-slate-400 mx-auto" />
-                <p className="text-sm font-bold">PDF Document Stream Ready</p>
+                <p className="text-sm font-bold">Document Ready</p>
               </div>
             )}
           </div>
