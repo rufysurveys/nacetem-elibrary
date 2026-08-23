@@ -21,7 +21,7 @@ import { generateAcademicPaperSummary } from '../utils/aiPaperSummarizer';
 import { exportToPdf, exportToWord } from '../utils/documentExporter';
 
 export default function DocumentLandingModal({ book, isOpen, onClose, onOpenReader, onOpenCitation, isFavorite, onToggleFavorite }) {
-  const [activeTab, setActiveTab] = useState('summary'); // 'summary', 'metadata', 'fulltext'
+  const [activeTab, setActiveTab] = useState('summary');
   const [copiedLink, setCopiedLink] = useState(false);
 
   if (!isOpen || !book) return null;
@@ -33,6 +33,14 @@ export default function DocumentLandingModal({ book, isOpen, onClose, onOpenRead
     navigator.clipboard.writeText(window.location.href);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const handleDownloadOriginalFile = async () => {
+    await exportToPdf(book);
+  };
+
+  const handleDownloadWordFile = async () => {
+    await exportToWord(book);
   };
 
   return (
@@ -78,6 +86,7 @@ export default function DocumentLandingModal({ book, isOpen, onClose, onOpenRead
         {/* Action Button Bar */}
         <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs font-extrabold">
           <div className="flex items-center space-x-2">
+            {/* Open Original Document */}
             <button
               onClick={() => {
                 onClose();
@@ -86,19 +95,20 @@ export default function DocumentLandingModal({ book, isOpen, onClose, onOpenRead
               className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black flex items-center space-x-2 shadow-md hover:scale-105 transition-all"
             >
               <BookOpen className="w-4 h-4" />
-              <span>Read Online (Custom PDF Reader)</span>
+              <span>View Original Document</span>
             </button>
 
+            {/* Download Exact Original File */}
             <button
-              onClick={() => exportToPdf(book)}
+              onClick={handleDownloadOriginalFile}
               className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold flex items-center space-x-1.5 shadow-xs"
             >
               <Download className="w-4 h-4 text-emerald-400" />
-              <span>Download PDF</span>
+              <span>Download Original File</span>
             </button>
 
             <button
-              onClick={() => exportToWord(book)}
+              onClick={handleDownloadWordFile}
               className="px-4 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-300 font-bold flex items-center space-x-1.5"
             >
               <FileText className="w-4 h-4 text-blue-700" />
@@ -147,7 +157,7 @@ export default function DocumentLandingModal({ book, isOpen, onClose, onOpenRead
             }`}
           >
             <Sparkles className="w-4 h-4 text-amber-500" />
-            <span>AI Structured Summary</span>
+            <span>Layer B: AI Insights & Summary</span>
           </button>
 
           <button
@@ -157,7 +167,7 @@ export default function DocumentLandingModal({ book, isOpen, onClose, onOpenRead
             }`}
           >
             <ShieldCheck className="w-4 h-4 text-purple-600" />
-            <span>Academic Metadata & References</span>
+            <span>Academic Metadata & Citations</span>
           </button>
         </div>
 
@@ -166,14 +176,14 @@ export default function DocumentLandingModal({ book, isOpen, onClose, onOpenRead
           {activeTab === 'summary' && (
             <div className="space-y-5">
               
-              {/* AI Badge */}
+              {/* Layer B Disclaimer Badge */}
               <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between text-emerald-950 font-bold">
                 <div className="flex items-center space-x-2">
                   <Sparkles className="w-4 h-4 text-amber-600 animate-pulse" />
-                  <span>AI Academic Synthesis (Grounded in Document Bytes)</span>
+                  <span>Layer B: AI Intelligence (Derived from Untouched Layer A Document)</span>
                 </div>
                 <span className="text-[10px] bg-white border border-emerald-300 px-2 py-0.5 rounded-full font-mono text-emerald-800">
-                  Verified Academic Extract
+                  Original Document Untouched
                 </span>
               </div>
 

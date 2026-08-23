@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   BookOpen, 
   Check, 
@@ -46,7 +46,7 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
     return localStorage.getItem('nacetem_reading_mode') || 'day';
   });
 
-  // Active Exact PDF URL Data
+  // Active Exact PDF URL Data (Layer A: Original Document)
   const [exactPdfDataUrl, setExactPdfDataUrl] = useState(book?.fileUrl || book?.pdfDataUrl || '');
   const [isLoadingPdf, setIsLoadingPdf] = useState(true);
 
@@ -74,8 +74,9 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
   ]);
 
   const [newNoteText, setNewNoteText] = useState('');
+  const iframeRef = useRef(null);
 
-  // Fetch or generate exact crisp PDF Data URL on mount
+  // Load exact untouched PDF Data URL on mount
   useEffect(() => {
     let isMounted = true;
 
@@ -98,7 +99,7 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
         return;
       }
 
-      // Generate crisp, high-resolution PDF Data URL for default/seeded papers
+      // Generate crisp high-resolution PDF Data URL for default/seeded papers
       const generatedUrl = generateSamplePdfDataUrl(book);
       if (isMounted) {
         setExactPdfDataUrl(generatedUrl);
@@ -113,6 +114,14 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
     };
   }, [book]);
 
+  // When currentPage changes, update iframe src hash to navigate ORIGINAL DOCUMENT to that page
+  useEffect(() => {
+    if (exactPdfDataUrl && iframeRef.current) {
+      const pageTargetUrl = `${exactPdfDataUrl}#page=${currentPage}&view=FitH`;
+      iframeRef.current.src = pageTargetUrl;
+    }
+  }, [currentPage, exactPdfDataUrl]);
+
   useEffect(() => {
     localStorage.setItem('nacetem_reading_mode', readingMode);
   }, [readingMode]);
@@ -125,10 +134,9 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
-  const pdfUrl = exactPdfDataUrl ? `${exactPdfDataUrl}#view=FitH` : '';
   const citation = generateAcademicCitation(book, 'APA');
 
-  // Table of Contents Section Jumps
+  // Layer B: AI-Detected Table of Contents associated with exact page numbers
   const detectedTocSections = [
     { title: 'Abstract & Executive Summary', page: 1 },
     { title: '1. Introduction & Background', page: 2 },
@@ -139,6 +147,14 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
     { title: '6. Conclusion & Recommendations', page: 11 },
     { title: 'References & Appendices', page: 12 }
   ];
+
+  // Navigation to exact page in Layer A (Original Document)
+  const jumpToDocumentPage = (targetPage) => {
+    setCurrentPage(targetPage);
+    if (exactPdfDataUrl && iframeRef.current) {
+      iframeRef.current.src = `${exactPdfDataUrl}#page=${targetPage}&view=FitH`;
+    }
+  };
 
   const handleInPaperSearch = (e) => {
     e.preventDefault();
@@ -162,12 +178,16 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
 
   const nextSearchMatch = () => {
     if (searchResults.length === 0) return;
-    setCurrentMatchIndex((prev) => (prev + 1) % searchResults.length);
+    const nextIdx = (currentMatchIndex + 1) % searchResults.length;
+    setCurrentMatchIndex(nextIdx);
+    jumpToDocumentPage(searchResults[nextIdx].page);
   };
 
   const prevSearchMatch = () => {
     if (searchResults.length === 0) return;
-    setCurrentMatchIndex((prev) => (prev - 1 + searchResults.length) % searchResults.length);
+    const prevIdx = (currentMatchIndex - 1 + searchResults.length) % searchResults.length;
+    setCurrentMatchIndex(prevIdx);
+    jumpToDocumentPage(searchResults[prevIdx].page);
   };
 
   const toggleBookmark = (pg) => {
@@ -190,17 +210,8 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
     setNewNoteText('');
   };
 
-  const handleDownloadOriginalPdf = () => {
-    if (exactPdfDataUrl) {
-      const link = document.createElement('a');
-      link.href = exactPdfDataUrl;
-      link.download = book.uploadedFileName || `${book.id}_Original_Document.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } else {
-      exportToPdf(book);
-    }
+  const handleDownloadOriginalPdf = async () => {
+    await exportToPdf(book);
   };
 
   const toggleFullscreen = () => {
@@ -219,25 +230,23 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
   const modeStyles = {
     day: {
       bg: 'bg-slate-100 text-slate-900',
-      paper: 'bg-white text-slate-900 shadow-xl border-slate-200',
       header: 'bg-white border-slate-200 text-slate-900',
       sidebar: 'bg-slate-50 border-slate-200 text-slate-800'
     },
     sepia: {
       bg: 'bg-[#f4ecd8] text-[#433422]',
-      paper: 'bg-[#fbf0d9] text-[#433422] shadow-xl border-[#e2d5b6]',
       header: 'bg-[#ede1c7] border-[#d8c8a7] text-[#433422]',
       sidebar: 'bg-[#eae0c8] border-[#d5c5a4] text-[#433422]'
     },
     dark: {
       bg: 'bg-slate-950 text-slate-100',
-      paper: 'bg-slate-900 text-slate-100 shadow-2xl border-slate-800',
       header: 'bg-slate-900 border-slate-800 text-slate-100',
       sidebar: 'bg-slate-900/90 border-slate-800 text-slate-200'
     }
   };
 
   const currentModeStyle = modeStyles[readingMode] || modeStyles.day;
+  const initialPdfSrc = exactPdfDataUrl ? `${exactPdfDataUrl}#page=${currentPage}&view=FitH` : '';
 
   return (
     <div className={`fixed inset-0 z-50 flex flex-col font-sans transition-colors duration-300 ${currentModeStyle.bg}`} role="dialog" aria-modal="true" aria-label={`Reading ${book.title}`}>
@@ -262,7 +271,12 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
           </button>
 
           <div className="min-w-0 pl-1">
-            <h2 className="font-extrabold text-xs md:text-sm truncate max-w-xs md:max-w-md">{book.title}</h2>
+            <div className="flex items-center space-x-1.5">
+              <span className="bg-emerald-100 text-emerald-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+                Original Document
+              </span>
+              <h2 className="font-extrabold text-xs md:text-sm truncate max-w-xs md:max-w-md">{book.title}</h2>
+            </div>
             <p className="text-[11px] opacity-75 truncate hidden sm:block">
               {Array.isArray(book.authors) ? book.authors.join(', ') : book.authors} ({book.year})
             </p>
@@ -316,19 +330,19 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
             <Bookmark className="w-4 h-4 fill-current" />
           </button>
 
-          {/* Download 100% Original PDF */}
+          {/* Download 100% Exact Original File */}
           <button
             onClick={handleDownloadOriginalPdf}
             className="px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-xs"
           >
             <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Download PDF</span>
+            <span className="hidden sm:inline">Download Original File</span>
           </button>
 
           {/* Right Panel Toggle */}
           <button
             onClick={() => setRightPanelOpen(!rightPanelOpen)}
-            title="Toggle Research Tools"
+            title="Toggle AI Research Tools & Notes"
             className="p-2 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800"
           >
             {rightPanelOpen ? <PanelRightClose className="w-4 h-4 text-emerald-700" /> : <PanelRightOpen className="w-4 h-4" />}
@@ -339,7 +353,7 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
       {/* 3-AREA LAYOUT CONTAINER */}
       <div className="flex flex-1 min-h-0 relative">
         
-        {/* 1. LEFT SIDEBAR (Collapsible Navigation & Metadata) */}
+        {/* 1. LEFT SIDEBAR (Layer B: AI Navigation & TOC Section Jumps) */}
         {leftSidebarOpen && (
           <aside className={`w-72 md:w-80 shrink-0 border-r flex flex-col transition-colors ${currentModeStyle.sidebar}`}>
             {/* Sidebar Tabs */}
@@ -377,7 +391,7 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
                   {detectedTocSections.map((sec, idx) => (
                     <button
                       key={idx}
-                      onClick={() => setCurrentPage(sec.page)}
+                      onClick={() => jumpToDocumentPage(sec.page)}
                       className={`w-full text-left p-2.5 rounded-xl border transition-all flex items-center justify-between ${
                         currentPage === sec.page 
                           ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 font-bold text-emerald-900 dark:text-emerald-300' 
@@ -396,7 +410,7 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((pg) => (
                     <button
                       key={pg}
-                      onClick={() => setCurrentPage(pg)}
+                      onClick={() => jumpToDocumentPage(pg)}
                       className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center space-y-1 ${
                         currentPage === pg
                           ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 font-bold text-emerald-900 dark:text-emerald-300 ring-2 ring-emerald-500'
@@ -438,7 +452,7 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
           </aside>
         )}
 
-        {/* 2. CENTER MAIN READING AREA (Crisp High-Definition PDF Viewer Viewport) */}
+        {/* 2. CENTER MAIN READING AREA (Layer A: Untouched Original Document Viewport) */}
         <main className="flex-1 min-w-0 flex flex-col relative overflow-hidden bg-slate-900">
           
           {/* Main PDF Viewport */}
@@ -446,11 +460,12 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
             {isLoadingPdf ? (
               <div className="text-center space-y-3 text-white">
                 <Sparkles className="w-8 h-8 text-emerald-400 animate-spin mx-auto" />
-                <p className="text-xs font-bold font-mono">Loading exact high-definition document PDF...</p>
+                <p className="text-xs font-bold font-mono">Loading exact high-definition original document...</p>
               </div>
-            ) : pdfUrl ? (
+            ) : initialPdfSrc ? (
               <iframe 
-                src={pdfUrl} 
+                ref={iframeRef}
+                src={initialPdfSrc} 
                 title={book.title} 
                 className="w-full h-full border-0 bg-white shadow-2xl" 
                 style={{ zoom: `${zoomLevel}%` }}
@@ -467,7 +482,7 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
           <footer className={`h-12 shrink-0 border-t px-4 flex items-center justify-between text-xs font-extrabold transition-colors ${currentModeStyle.header}`}>
             <div className="flex items-center space-x-2">
               <button 
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                onClick={() => jumpToDocumentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
                 className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 disabled:opacity-40"
               >
@@ -477,7 +492,7 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
                 Page {currentPage} of {totalPages}
               </span>
               <button 
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                onClick={() => jumpToDocumentPage(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
                 className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 disabled:opacity-40"
               >
@@ -498,7 +513,7 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
           </footer>
         </main>
 
-        {/* 4. RIGHT-SIDE RESEARCH TOOLS (Collapsible Panel) */}
+        {/* 4. RIGHT-SIDE RESEARCH TOOLS (Layer B: AI Research & Notes Panel) */}
         {rightPanelOpen && (
           <aside className={`w-80 shrink-0 border-l flex flex-col transition-colors ${currentModeStyle.sidebar}`}>
             {/* Right Tools Header Tabs */}
@@ -556,7 +571,7 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
                   {bookmarks.map((pg) => (
                     <button
                       key={pg}
-                      onClick={() => setCurrentPage(pg)}
+                      onClick={() => jumpToDocumentPage(pg)}
                       className="w-full p-2.5 bg-slate-200/50 dark:bg-slate-800 rounded-xl flex items-center justify-between font-bold"
                     >
                       <span className="flex items-center space-x-2">
@@ -607,7 +622,7 @@ export default function DocumentReaderModal({ book, onClose, onAddNote, notes = 
                       key={i}
                       onClick={() => {
                         setCurrentMatchIndex(i);
-                        setCurrentPage(res.page);
+                        jumpToDocumentPage(res.page);
                       }}
                       className={`w-full text-left p-2.5 rounded-xl border transition-all ${
                         currentMatchIndex === i 

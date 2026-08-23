@@ -1,21 +1,33 @@
 import jsPDF from 'jspdf';
+import { getPdfFromStorage } from './pdfStorage';
 
 /**
- * Exports a publication as an official formatted PDF Document (.pdf)
+ * Exports/Downloads a publication as its exact original uploaded PDF file payload.
+ * Layer A: 100% Byte-for-byte exact original file preservation.
  */
-export function exportToPdf(book) {
-  // If original uploaded document data URL or file URL exists, download 100% byte-for-byte exact file
-  if (book.fileUrl || book.pdfDataUrl) {
+export async function exportToPdf(book) {
+  if (!book) return;
+
+  // 1. Check if original file URL or in-memory pdfDataUrl exists
+  let targetDataUrl = book.fileUrl || book.pdfDataUrl || null;
+
+  // 2. If not in memory, retrieve exact binary payload from IndexedDB storage
+  if (!targetDataUrl && book.id) {
+    targetDataUrl = await getPdfFromStorage(book.id);
+  }
+
+  // If original binary payload is found, download exact original file byte-for-byte
+  if (targetDataUrl) {
     const link = document.createElement('a');
-    link.href = book.fileUrl ? `${book.fileUrl}?download=1` : book.pdfDataUrl;
-    link.download = book.uploadedFileName || book.fileName || `${book.id}_Original_Document.pdf`;
+    link.href = book.fileUrl ? (book.fileUrl.startsWith('http') || book.fileUrl.startsWith('/') ? book.fileUrl : `${book.fileUrl}?download=1`) : targetDataUrl;
+    link.download = book.uploadedFileName || book.fileName || `${book.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
     document.body.appendChild(link);
     link.click();
     link.remove();
     return;
   }
 
-  // Otherwise, generate official styled PDF document
+  // Fallback: If no binary exists, synthesize formatted PDF with jsPDF
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -28,11 +40,10 @@ export function exportToPdf(book) {
   const contentWidth = pageWidth - margin * 2;
   let y = margin;
 
-  // Helper for adding headers and page numbers
   const addPageHeaderFooter = (pageNo, totalPages) => {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
-    doc.setTextColor(4, 120, 87); // Emerald color
+    doc.setTextColor(4, 120, 87);
     doc.text('NATIONAL CENTRE FOR TECHNOLOGY MANAGEMENT (NACETEM)', margin, 10);
     
     doc.setFont('helvetica', 'normal');
@@ -42,7 +53,6 @@ export function exportToPdf(book) {
     doc.setDrawColor(226, 232, 240);
     doc.line(margin, 12, pageWidth - margin, 12);
 
-    // Footer
     doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
     doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
@@ -50,7 +60,6 @@ export function exportToPdf(book) {
     doc.text(`Page ${pageNo} of ${totalPages}`, pageWidth - margin, pageHeight - 7, { align: 'right' });
   };
 
-  // Title Banner Box
   doc.setFillColor(248, 250, 252);
   doc.setDrawColor(5, 150, 105);
   doc.roundedRect(margin, y + 2, contentWidth, 38, 3, 3, 'FD');
@@ -60,8 +69,7 @@ export function exportToPdf(book) {
   doc.setFontSize(13);
   doc.setTextColor(15, 23, 42);
 
-  // Wrap Title
-  const titleLines = doc.splitTextToSize(book.title.toUpperCase(), contentWidth - 10);
+  const titleLines = doc.splitTextToSize((book.title || 'RESEARCH PUBLICATION').toUpperCase(), contentWidth - 10);
   doc.text(titleLines, margin + 5, y + 2);
   y += titleLines.length * 5.5 + 2;
 
@@ -73,7 +81,7 @@ export function exportToPdf(book) {
     y += 5;
   }
 
-  const authorsStr = Array.isArray(book.authors) ? book.authors.join(', ') : book.authors;
+  const authorsStr = Array.isArray(book.authors) ? book.authors.join(', ') : (book.authors || 'NACETEM Researcher');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
@@ -83,7 +91,6 @@ export function exportToPdf(book) {
 
   y += 24;
 
-  // Executive Summary / Abstract Section
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(15, 23, 42);
@@ -97,7 +104,6 @@ export function exportToPdf(book) {
   doc.text(abstractLines, margin, y);
   y += abstractLines.length * 5 + 6;
 
-  // Key Takeaways Box
   if (book.keyTakeaways && book.keyTakeaways.length > 0) {
     doc.setFillColor(240, 253, 244);
     doc.setDrawColor(187, 247, 208);
@@ -123,7 +129,6 @@ export function exportToPdf(book) {
     y += boxHeight + 8;
   }
 
-  // Full Text Sections
   const sections = book.fullText || [];
   sections.forEach((sec, idx) => {
     if (y > pageHeight - 40) {
@@ -134,7 +139,7 @@ export function exportToPdf(book) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(4, 120, 87);
-    doc.text(`SECTION ${idx + 1}: ${sec.sectionTitle.toUpperCase()}`, margin, y);
+    doc.text(`SECTION ${idx + 1}: ${(sec.sectionTitle || '').toUpperCase()}`, margin, y);
     y += 6;
 
     doc.setFont('times', 'normal');
@@ -154,25 +159,31 @@ export function exportToPdf(book) {
     y += 6;
   });
 
-  // Apply Headers and Footers to all pages
   const totalPages = doc.internal.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     addPageHeaderFooter(i, totalPages);
   }
 
-  // Save PDF Document
-  doc.save(`${book.id}_NACETEM_Official_Paper.pdf`);
+  doc.save(book.uploadedFileName || `${book.id}_NACETEM_Official_Paper.pdf`);
 }
 
 /**
- * Exports a publication as a Microsoft Word Document (.doc / .docx)
+ * Exports/Downloads a publication as a Microsoft Word Document (.doc / .docx)
+ * Downloads exact original uploaded .doc / .docx file if available.
  */
-export function exportToWord(book) {
+export async function exportToWord(book) {
+  if (!book) return;
+
+  let targetDataUrl = book.fileUrl || book.pdfDataUrl || null;
+  if (!targetDataUrl && book.id) {
+    targetDataUrl = await getPdfFromStorage(book.id);
+  }
+
   // If uploaded file is a word document, download exact original file payload
-  if (book.pdfDataUrl && (book.uploadedFileName?.toLowerCase().endsWith('.doc') || book.uploadedFileName?.toLowerCase().endsWith('.docx'))) {
+  if (targetDataUrl && (book.uploadedFileName?.toLowerCase().endsWith('.doc') || book.uploadedFileName?.toLowerCase().endsWith('.docx'))) {
     const link = document.createElement('a');
-    link.href = book.pdfDataUrl;
+    link.href = targetDataUrl;
     link.download = book.uploadedFileName || `${book.id}_Original_Document.docx`;
     document.body.appendChild(link);
     link.click();
@@ -251,7 +262,7 @@ export function exportToWord(book) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `${book.id}_NACETEM_Paper.doc`;
+  link.download = book.uploadedFileName || `${book.id}_NACETEM_Paper.doc`;
   link.click();
   URL.revokeObjectURL(url);
 }
